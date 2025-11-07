@@ -1,0 +1,4 @@
+EmployeeID,Name,Department,Email,Mobile,DefaultPassword
+EMP001,John Doe,IT,john@company.com,9876543210,Pass@123
+EMP002,Jane Smith,HR,jane@company.com,9876543211,Pass@123
+EMP003,Mike Johnson,Finance,mike@company.com,9876543212,Pass@123
