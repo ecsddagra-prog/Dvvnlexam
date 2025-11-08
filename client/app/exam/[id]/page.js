@@ -138,7 +138,7 @@ export default function ExamPage() {
     };
   };
 
-  const submitWithRetry = async (answers, totalTime, submittedAt, clientCalc, maxRetries = 3) => {
+  const submitWithRetry = async (answers, totalTime, submittedAt, clientCalc, maxRetries = 5) => {
     let lastError;
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -160,6 +160,7 @@ export default function ExamPage() {
       } catch (error) {
         lastError = error;
         console.error(`Submit attempt ${attempt} failed:`, error);
+        console.error('Error details:', error.response?.data);
         
         // Don't retry if already submitted
         if (error.response?.data?.message?.includes('already submitted')) {
@@ -167,17 +168,31 @@ export default function ExamPage() {
           return error.response.data;
         }
         
-        // Don't retry on validation errors
-        if (error.response?.status === 400 && 
-            !error.response?.data?.error?.includes('time exceeded')) {
+        // Don't retry on time exceeded errors
+        if (error.response?.data?.error?.includes('time exceeded')) {
+          console.log('Time exceeded, not retrying');
           throw error;
         }
         
-        // Wait before retry (exponential backoff)
-        if (attempt < maxRetries) {
-          const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
-          console.log(`Waiting ${waitTime}ms before retry...`);
-          await new Promise(resolve => setTimeout(resolve, waitTime));
+        // Don't retry on other validation errors (except network errors)
+        if (error.response?.status === 400 && error.response?.data?.error) {
+          console.log('Validation error, not retrying');
+          throw error;
+        }
+        
+        // Retry on network errors or 500 errors
+        if (!error.response || error.response?.status >= 500) {
+          if (attempt < maxRetries) {
+            const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+            console.log(`Network/server error, waiting ${waitTime}ms before retry...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            continue;
+          }
+        }
+        
+        // For other errors, throw immediately
+        if (attempt >= maxRetries) {
+          throw lastError;
         }
       }
     }

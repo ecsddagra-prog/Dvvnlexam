@@ -259,10 +259,10 @@ router.post('/:examId/submit', async (req, res) => {
     return res.status(400).json({ error: 'No exam session found. Please start the exam first.' });
   }
 
-  // Server-side validation: Check if time is valid (allow 10 min buffer for flexibility)
+  // Server-side validation: Check if time is valid (allow 15 min buffer for flexibility)
   const now = new Date();
   const endsAt = new Date(session.ends_at);
-  const buffer = 600000; // 10 minutes (increased for auto-submit delays and network issues)
+  const buffer = 900000; // 15 minutes (increased for auto-submit delays and network issues)
   const timeRemaining = endsAt - now;
   const timeExceeded = now - endsAt;
   
@@ -277,18 +277,18 @@ router.post('/:examId/submit', async (req, res) => {
     sessionActive: session.is_active
   });
   
-  // Only enforce time limit if session is still active
-  // If session is inactive but no result exists, allow submission (recovery scenario)
-  if (session.is_active && timeExceeded > buffer) {
-    console.log('Time exceeded on active session - rejecting submit');
+  // Allow submission if within buffer OR if session is inactive (recovery scenario)
+  // Only reject if time exceeded AND buffer exceeded
+  if (timeExceeded > buffer) {
+    console.log('Time exceeded beyond buffer - rejecting submit');
     return res.status(400).json({ 
-      error: 'Exam time exceeded',
+      error: 'Exam time exceeded. Please contact administrator.',
       details: `Exam ended at ${endsAt.toISOString()}, current time is ${now.toISOString()}`
     });
   }
   
   if (!session.is_active) {
-    console.log('Session inactive but allowing submission as recovery (no existing result)');
+    console.log('Session inactive but allowing submission as recovery (within buffer)');
   } else {
     console.log('Time validation passed');
   }
@@ -317,11 +317,8 @@ router.post('/:examId/submit', async (req, res) => {
   const finalScore = serverScore;
   const finalPercentage = serverPercentage;
 
-  // Deactivate session
-  await supabase
-    .from('exam_sessions')
-    .update({ is_active: false })
-    .eq('id', session.id);
+  // Deactivate session AFTER result is created to prevent race conditions
+  // This will be done after result insertion
 
   // Store result
   const { data: result, error } = await supabase
@@ -338,7 +335,16 @@ router.post('/:examId/submit', async (req, res) => {
     .select()
     .single();
 
-  if (error) return res.status(400).json({ error: error.message });
+  if (error) {
+    console.error('Failed to insert result:', error);
+    return res.status(400).json({ error: 'Failed to save exam result: ' + error.message });
+  }
+
+  // NOW deactivate session after result is successfully created
+  await supabase
+    .from('exam_sessions')
+    .update({ is_active: false })
+    .eq('id', session.id);
 
   // Update assignment
   await supabase
