@@ -34,11 +34,23 @@ export default function AdminDashboard() {
   const [recentResults, setRecentResults] = useState([]);
   const [loading, setLoading] = useState({ analytics: false });
   const [feedback, setFeedback] = useState({ error: '', success: '' });
+  const [adminProfile, setAdminProfile] = useState(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   useEffect(() => {
+    loadAdminProfile();
     loadAnalytics();
     loadRecentResults();
   }, []);
+
+  const loadAdminProfile = () => {
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      setAdminProfile(user);
+    } catch (err) {
+      console.error('Failed to load admin profile:', err);
+    }
+  };
 
   const loadAnalytics = async () => {
     setLoading((prev) => ({ ...prev, analytics: true }));
@@ -62,17 +74,17 @@ export default function AdminDashboard() {
   };
 
   const menuItems = [
+    { id: 'create-exam', title: 'Create Exam', icon: '📝', description: 'Create new examination' },
+    { id: 'assign-questions', title: 'Assign Questions to Exam', icon: '🔗', description: 'Link questions to exams' },
+    { id: 'assign-exam', title: 'Assign Exam to Employees', icon: '📋', description: 'Assign exams to employees' },
     { id: 'upload-employees', title: 'Upload Employees', icon: '👥', description: 'Bulk upload employees via Excel/CSV' },
     { id: 'upload-questions', title: 'Upload Questions', icon: '❓', description: 'Bulk upload questions via Excel/CSV' },
-    { id: 'create-exam', title: 'Create Exam', icon: '📝', description: 'Create new examination' },
-    { id: 'manage-exams', title: 'Manage Exams', icon: '✏️', description: 'View, edit, delete exams' },
-    { id: 'assign-questions', title: 'Assign Questions to Exam', icon: '🔗', description: 'Link questions to exams' },
-    { id: 'assign-questions-contributor', title: 'Assign Questions to Contributors', icon: '👨‍💼', description: 'Assign questions for editing' },
-    { id: 'assign-exam', title: 'Assign Exam to Employees', icon: '📋', description: 'Assign exams to employees' },
-    { id: 'employee-management', title: 'Employee Management', icon: '⚙️', description: 'Manage employee accounts' },
     { id: 'exam-results', title: 'Exam Results', icon: '📊', description: 'View examination results' },
+    { id: 'reexam-requests', title: 'Reexam Requests', icon: '🔄', description: 'Manage reexam requests' },
+    { id: 'manage-exams', title: 'Manage Exams', icon: '✏️', description: 'View, edit, delete exams' },
+    { id: 'employee-management', title: 'Employee Management', icon: '⚙️', description: 'Manage employee accounts' },
     { id: 'pending-questions', title: 'Pending Questions', icon: '⏳', description: 'Review pending questions' },
-    { id: 'reexam-requests', title: 'Reexam Requests', icon: '🔄', description: 'Manage reexam requests' }
+    { id: 'assign-questions-contributor', title: 'Assign Questions to Contributors', icon: '👨‍💼', description: 'Assign questions for editing' }
   ];
 
   const renderPageContent = () => {
@@ -107,29 +119,46 @@ export default function AdminDashboard() {
   if (currentPage !== 'dashboard') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-        <div className="bg-white shadow-sm border-b">
+        <div className="bg-white/80 backdrop-blur-md shadow-lg border-b border-purple-100">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex justify-between items-center">
               <div className="flex items-center">
                 <button
-                  onClick={() => setCurrentPage('dashboard')}
-                  className="mr-4 px-3 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                  onClick={() => {
+                    setCurrentPage('dashboard');
+                    setFeedback({ error: '', success: '' });
+                  }}
+                  className="mr-4 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl"
                 >
                   ← Back
                 </button>
-                <h1 className="text-2xl font-bold text-gray-800">
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                   {menuItems.find(item => item.id === currentPage)?.title}
                 </h1>
               </div>
-              <button
-                onClick={() => {
-                  localStorage.clear();
-                  window.location.href = '/';
-                }}
-                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
-              >
-                Logout
-              </button>
+              <div className="flex items-center gap-4">
+                {adminProfile && (
+                  <div className="text-right cursor-pointer" onClick={() => setShowProfileModal(true)}>
+                    <p className="text-sm font-semibold text-gray-800 hover:text-purple-600 transition">{adminProfile.name}</p>
+                    <p className="text-xs text-gray-500">{adminProfile.email}</p>
+                  </div>
+                )}
+                <div 
+                  className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold shadow-lg cursor-pointer hover:scale-110 transition-transform"
+                  onClick={() => setShowProfileModal(true)}
+                >
+                  {adminProfile?.name?.charAt(0) || 'A'}
+                </div>
+                <button
+                  onClick={() => {
+                    localStorage.clear();
+                    window.location.href = '/';
+                  }}
+                  className="px-6 py-2 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-xl hover:from-red-600 hover:to-pink-600 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+                >
+                  Logout
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -155,28 +184,48 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
       <Head>
         <title>Admin Dashboard - HR Exam System</title>
       </Head>
       
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div className="bg-white/80 backdrop-blur-md shadow-lg border-b border-purple-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Admin Dashboard</h1>
-              <p className="text-gray-600 text-sm mt-1">Manage exams, users, and questions</p>
+              <h1 className="text-4xl font-extrabold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">Admin Dashboard</h1>
+              <p className="text-gray-600 text-sm mt-2 flex items-center gap-2">
+                <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                Manage exams, users, and questions
+              </p>
             </div>
-            <button
-              onClick={() => {
-                localStorage.clear();
-                window.location.href = '/';
-              }}
-              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
-            >
-              Logout
-            </button>
+            <div className="flex items-center gap-4">
+              {adminProfile && (
+                <div className="text-right cursor-pointer" onClick={() => setShowProfileModal(true)}>
+                  <p className="text-sm font-semibold text-gray-800 hover:text-purple-600 transition">{adminProfile.name}</p>
+                  <p className="text-xs text-gray-500">{adminProfile.email}</p>
+                  <span className="inline-block mt-1 px-2 py-0.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold rounded-full">
+                    {adminProfile.role?.toUpperCase()}
+                  </span>
+                </div>
+              )}
+              <div 
+                className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg cursor-pointer hover:scale-110 transition-transform"
+                onClick={() => setShowProfileModal(true)}
+              >
+                {adminProfile?.name?.charAt(0) || 'A'}
+              </div>
+              <button
+                onClick={() => {
+                  localStorage.clear();
+                  window.location.href = '/';
+                }}
+                className="px-6 py-2.5 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-xl hover:from-red-600 hover:to-pink-600 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -197,127 +246,138 @@ export default function AdminDashboard() {
         {analytics && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-6 mb-8">
-              <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition">
+              <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all duration-300 hover:shadow-2xl border border-blue-400/20">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-blue-100 text-sm font-medium">Total Exams</p>
-                    <p className="text-4xl font-bold mt-2">{analytics.totalExams}</p>
+                    <p className="text-blue-100 text-xs font-semibold uppercase tracking-wide">Total Exams</p>
+                    <p className="text-5xl font-extrabold mt-3">{analytics.totalExams}</p>
                   </div>
+                  <div className="text-5xl opacity-20">📝</div>
                 </div>
               </div>
               
-              <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition">
+              <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all duration-300 hover:shadow-2xl border border-green-400/20">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-green-100 text-sm font-medium">Total Attempts</p>
-                    <p className="text-4xl font-bold mt-2">{analytics.examResults?.totalAttempts || 0}</p>
+                    <p className="text-green-100 text-xs font-semibold uppercase tracking-wide">Total Attempts</p>
+                    <p className="text-5xl font-extrabold mt-3">{analytics.examResults?.totalAttempts || 0}</p>
                   </div>
+                  <div className="text-5xl opacity-20">✍️</div>
                 </div>
               </div>
               
-              <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition">
+              <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all duration-300 hover:shadow-2xl border border-emerald-400/20">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-emerald-100 text-sm font-medium">Passed</p>
-                    <p className="text-4xl font-bold mt-2">{analytics.examResults?.passedCount || 0}</p>
+                    <p className="text-emerald-100 text-xs font-semibold uppercase tracking-wide">Passed</p>
+                    <p className="text-5xl font-extrabold mt-3">{analytics.examResults?.passedCount || 0}</p>
                   </div>
+                  <div className="text-5xl opacity-20">✅</div>
                 </div>
               </div>
               
-              <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition">
+              <div className="bg-gradient-to-br from-red-500 to-rose-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all duration-300 hover:shadow-2xl border border-red-400/20">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-red-100 text-sm font-medium">Failed</p>
-                    <p className="text-4xl font-bold mt-2">{analytics.examResults?.failedCount || 0}</p>
+                    <p className="text-red-100 text-xs font-semibold uppercase tracking-wide">Failed</p>
+                    <p className="text-5xl font-extrabold mt-3">{analytics.examResults?.failedCount || 0}</p>
                   </div>
+                  <div className="text-5xl opacity-20">❌</div>
                 </div>
               </div>
               
-              <div className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition">
+              <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all duration-300 hover:shadow-2xl border border-purple-400/20">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-purple-100 text-sm font-medium">Pass Rate</p>
-                    <p className="text-4xl font-bold mt-2">{analytics.examResults?.passRate || 0}%</p>
+                    <p className="text-purple-100 text-xs font-semibold uppercase tracking-wide">Pass Rate</p>
+                    <p className="text-5xl font-extrabold mt-3">{analytics.examResults?.passRate || 0}%</p>
                   </div>
+                  <div className="text-5xl opacity-20">📊</div>
                 </div>
               </div>
               
-              <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition">
+              <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all duration-300 hover:shadow-2xl border border-indigo-400/20">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-indigo-100 text-sm font-medium">Avg Score</p>
-                    <p className="text-4xl font-bold mt-2">{analytics.averageScore || 0}%</p>
+                    <p className="text-indigo-100 text-xs font-semibold uppercase tracking-wide">Avg Score</p>
+                    <p className="text-5xl font-extrabold mt-3">{analytics.averageScore || 0}%</p>
                   </div>
+                  <div className="text-5xl opacity-20">🎯</div>
                 </div>
               </div>
               
-              <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition">
+              <div className="bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-all duration-300 hover:shadow-2xl border border-orange-400/20">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-orange-100 text-sm font-medium">Reexam Requests</p>
-                    <p className="text-4xl font-bold mt-2">{analytics.reexamRequests || 0}</p>
+                    <p className="text-orange-100 text-xs font-semibold uppercase tracking-wide">Reexam Requests</p>
+                    <p className="text-5xl font-extrabold mt-3">{analytics.reexamRequests || 0}</p>
                   </div>
+                  <div className="text-5xl opacity-20">🔄</div>
                 </div>
               </div>
             </div>
 
             {/* Menu Tiles */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
-              {menuItems.map((item) => (
+              {menuItems.map((item, index) => (
                 <div
                   key={item.id}
                   onClick={() => setCurrentPage(item.id)}
-                  className="bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl hover:scale-105 transition-all duration-200 cursor-pointer group"
+                  className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg p-6 border-2 border-transparent hover:border-purple-300 hover:shadow-2xl hover:scale-105 transition-all duration-300 cursor-pointer group relative overflow-hidden"
+                  style={{ animationDelay: `${index * 50}ms` }}
                 >
-                  <div className="text-center">
-                    <div className="text-4xl mb-4 group-hover:scale-110 transition-transform">
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-pink-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="text-center relative z-10">
+                    <div className="text-5xl mb-4 group-hover:scale-125 group-hover:rotate-6 transition-all duration-300">
                       {item.icon}
                     </div>
-                    <h3 className="text-lg font-bold text-gray-800 mb-2">{item.title}</h3>
-                    <p className="text-sm text-gray-600">{item.description}</p>
+                    <h3 className="text-lg font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-2 group-hover:from-purple-600 group-hover:to-pink-600 transition-all">{item.title}</h3>
+                    <p className="text-sm text-gray-600 group-hover:text-gray-700">{item.description}</p>
                   </div>
                 </div>
               ))}
             </div>
 
             {/* Recent Results */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="text-lg font-semibold mb-4">Recent Exam Results</h3>
+            <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-6 border border-purple-100">
+              <h3 className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-4 flex items-center gap-2">
+                <span>📋</span> Recent Exam Results
+              </h3>
               {recentResults.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-gradient-to-r from-purple-50 to-pink-50">
                       <tr>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Employee</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Exam</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Score</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Status</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Rank</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Date</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Employee</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Exam</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Score</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Rank</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Date</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
                       {recentResults.map((result) => (
-                        <tr key={result.id} className="hover:bg-gray-50">
+                        <tr key={result.id} className="hover:bg-purple-50/50 transition-colors">
                           <td className="px-4 py-3 text-sm">
                             <div>
-                              <p className="font-medium">{result.user_name}</p>
-                              <p className="text-gray-500">{result.employee_id}</p>
+                              <p className="font-semibold text-gray-800">{result.user_name}</p>
+                              <p className="text-gray-500 text-xs">{result.employee_id}</p>
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-sm">{result.exam_title}</td>
-                          <td className="px-4 py-3 text-sm">{result.score}/{result.total_questions} ({result.percentage}%)</td>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-700">{result.exam_title}</td>
+                          <td className="px-4 py-3 text-sm font-semibold text-gray-800">{result.score}/{result.total_questions} <span className="text-purple-600">({result.percentage}%)</span></td>
                           <td className="px-4 py-3 text-sm">
-                            <span className={`px-2 py-1 rounded text-xs font-medium ${
-                              result.status === 'passed' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                            <span className={`px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${
+                              result.status === 'passed' ? 'bg-gradient-to-r from-green-400 to-emerald-500 text-white' : 'bg-gradient-to-r from-red-400 to-rose-500 text-white'
                             }`}>
-                              {result.status}
+                              {result.status === 'passed' ? '✓ Passed' : '✗ Failed'}
                             </span>
                           </td>
                           <td className="px-4 py-3 text-sm">
                             {result.rank && (
-                              <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">
-                                #{result.rank}
+                              <span className="px-3 py-1 bg-gradient-to-r from-purple-400 to-pink-500 text-white rounded-full text-xs font-bold shadow-sm">
+                                🏆 #{result.rank}
                               </span>
                             )}
                           </td>
@@ -336,6 +396,75 @@ export default function AdminDashboard() {
           </>
         )}
       </div>
+
+      {/* Profile Modal */}
+      {showProfileModal && adminProfile && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowProfileModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 transform transition-all" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-start mb-6">
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Profile Details</h2>
+              <button onClick={() => setShowProfileModal(false)} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            
+            <div className="flex flex-col items-center mb-6">
+              <div className="w-24 h-24 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-4xl shadow-xl mb-4">
+                {adminProfile.name?.charAt(0) || 'A'}
+              </div>
+              <span className="px-4 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-bold rounded-full shadow-lg">
+                {adminProfile.role?.toUpperCase()}
+              </span>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4">
+                <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Full Name</p>
+                <p className="text-lg font-semibold text-gray-800">{adminProfile.name || 'N/A'}</p>
+              </div>
+
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4">
+                <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Employee ID</p>
+                <p className="text-lg font-semibold text-gray-800">{adminProfile.employee_id || 'N/A'}</p>
+              </div>
+
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4">
+                <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Email Address</p>
+                <p className="text-lg font-semibold text-gray-800 break-all">{adminProfile.email || 'N/A'}</p>
+              </div>
+
+              <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl p-4">
+                <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Mobile Number</p>
+                <p className="text-lg font-semibold text-gray-800">{adminProfile.mobile || adminProfile.personal_mobile || 'N/A'}</p>
+              </div>
+
+              <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-xl p-4">
+                <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Department</p>
+                <p className="text-lg font-semibold text-gray-800">{adminProfile.department || 'N/A'}</p>
+              </div>
+
+              {adminProfile.personnel_area && (
+                <div className="bg-gradient-to-r from-violet-50 to-purple-50 rounded-xl p-4">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Designation</p>
+                  <p className="text-lg font-semibold text-gray-800">{adminProfile.personnel_area}</p>
+                </div>
+              )}
+
+              {adminProfile.employee_group && (
+                <div className="bg-gradient-to-r from-cyan-50 to-blue-50 rounded-xl p-4">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Class</p>
+                  <p className="text-lg font-semibold text-gray-800">{adminProfile.employee_group}</p>
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={() => setShowProfileModal(false)}
+              className="w-full mt-6 px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:from-indigo-600 hover:to-purple-700 transition-all shadow-lg font-semibold"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -487,7 +616,7 @@ const UploadQuestionsPage = ({ setFeedback }) => {
 const CreateExamPage = ({ setFeedback }) => {
     const [examForm, setExamForm] = useState({
       title: '', description: '', duration: 60, passingScore: 50,
-      totalQuestions: 10, marksPerQuestion: 1, startTime: '', endTime: ''
+      totalQuestions: 10, marksPerQuestion: 1, startTime: '', endTime: '', certificate_enabled: true
     });
     const [loading, setLoading] = useState(false);
 
@@ -516,7 +645,7 @@ const CreateExamPage = ({ setFeedback }) => {
         };
         await createExam(examData);
         setFeedback({ success: 'Exam created successfully!' });
-        setExamForm({ title: '', description: '', duration: 60, passingScore: 50, totalQuestions: 10, marksPerQuestion: 1, startTime: '', endTime: '' });
+        setExamForm({ title: '', description: '', duration: 60, passingScore: 50, totalQuestions: 10, marksPerQuestion: 1, startTime: '', endTime: '', certificate_enabled: true });
       } catch (err) {
         setFeedback({ error: err.response?.data?.error || 'Exam creation failed.' });
       } finally {
@@ -787,6 +916,8 @@ const AssignExamPage = ({ setFeedback }) => {
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterDepartment, setFilterDepartment] = useState('');
+    const [filterDesignation, setFilterDesignation] = useState('');
+    const [filterClass, setFilterClass] = useState('');
     const [bulkIds, setBulkIds] = useState('');
 
     useEffect(() => {
@@ -837,6 +968,8 @@ const AssignExamPage = ({ setFeedback }) => {
     };
 
     const departments = [...new Set(employees.map(e => e.department).filter(Boolean))];
+    const designations = [...new Set(employees.map(e => e.personnel_area).filter(Boolean))];
+    const classes = [...new Set(employees.map(e => e.employee_group).filter(Boolean))];
 
     const filteredEmployees = employees.filter(emp => {
       if (searchTerm && !(
@@ -845,6 +978,8 @@ const AssignExamPage = ({ setFeedback }) => {
         emp.employee_id?.toLowerCase().includes(searchTerm.toLowerCase())
       )) return false;
       if (filterDepartment && emp.department !== filterDepartment) return false;
+      if (filterDesignation && emp.personnel_area !== filterDesignation) return false;
+      if (filterClass && emp.employee_group !== filterClass) return false;
       return true;
     });
 
@@ -885,17 +1020,18 @@ const AssignExamPage = ({ setFeedback }) => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Search Employees</label>
-              <input
-                type="text"
-                placeholder="Name, Email, or ID"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full p-2 border rounded text-sm"
-              />
-            </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Search Employees</label>
+            <input
+              type="text"
+              placeholder="Name, Email, or ID"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full p-2 border rounded text-sm"
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Filter by Department</label>
               <select
@@ -905,6 +1041,28 @@ const AssignExamPage = ({ setFeedback }) => {
               >
                 <option value="">All Departments</option>
                 {departments.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Filter by Designation</label>
+              <select
+                value={filterDesignation}
+                onChange={(e) => setFilterDesignation(e.target.value)}
+                className="w-full p-2 border rounded text-sm"
+              >
+                <option value="">All Designations</option>
+                {designations.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Filter by Class</label>
+              <select
+                value={filterClass}
+                onChange={(e) => setFilterClass(e.target.value)}
+                className="w-full p-2 border rounded text-sm"
+              >
+                <option value="">All Classes</option>
+                {classes.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
           </div>
@@ -1153,18 +1311,39 @@ const ExamResultsPage = ({ setFeedback }) => {
 
     return (
       <div className="bg-white rounded-xl shadow-lg p-6">
-        <div className="mb-6 space-y-3">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Select Exam</label>
-          <select
-            value={selectedExam}
-            onChange={(e) => handleExamChange(e.target.value)}
-            className="w-full p-3 border rounded-lg"
-          >
-            <option value="">Choose an exam</option>
-            {exams.map((exam) => (
-              <option key={exam.id} value={exam.id}>{exam.title}</option>
-            ))}
-          </select>
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold mb-4">Select Exam</h3>
+          {exams.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {exams.map((exam, index) => (
+                <div
+                  key={exam.id}
+                  onClick={() => handleExamChange(exam.id)}
+                  className={`bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg p-6 border-2 transition-all duration-300 cursor-pointer group relative overflow-hidden ${
+                    selectedExam === exam.id
+                      ? 'border-purple-500 bg-purple-50'
+                      : 'border-transparent hover:border-purple-300 hover:shadow-2xl hover:scale-105'
+                  }`}
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-pink-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="text-center relative z-10">
+                    <div className="text-4xl mb-4 group-hover:scale-125 group-hover:rotate-6 transition-all duration-300">
+                      📝
+                    </div>
+                    <h3 className="text-lg font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-2 group-hover:from-purple-600 group-hover:to-pink-600 transition-all">{exam.title}</h3>
+                    <p className="text-sm text-gray-600 group-hover:text-gray-700 line-clamp-2">{exam.description}</p>
+                    <div className="mt-2 text-xs text-gray-500">
+                      <p>Duration: {exam.duration} min</p>
+                      <p>Passing: {exam.passing_score}%</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-gray-500">No exams available</p>
+          )}
           {selectedExam && (
             <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
               <div>
@@ -1281,7 +1460,12 @@ const ExamResultsPage = ({ setFeedback }) => {
               <tbody className="divide-y">
                 {results.map((result) => (
                   <tr key={result.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm font-medium">{result.user_name}</td>
+                    <td className="px-4 py-3 text-sm">
+                      <div>
+                        <p className="font-semibold text-gray-800">{result.employee_name || result.user_name || 'N/A'}</p>
+                        <p className="text-gray-500 text-xs">{result.employee_id}</p>
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-sm">{result.score}/{result.total_marks}</td>
                     <td className="px-4 py-3 text-sm">{result.percentage}%</td>
                     <td className="px-4 py-3 text-sm">

@@ -212,7 +212,7 @@ export default function EmployeeDashboard() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {exams.filter(e => !e.completed_at && e.exams).slice(0, 4).map((exam) => {
+                  {exams.filter(e => !e.completed_at && e.exams).sort((a, b) => new Date(b.exams.start_time) - new Date(a.exams.start_time)).slice(0, 4).map((exam) => {
                     const status = getExamStatus(exam);
                     return (
                       <div key={exam.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
@@ -233,23 +233,14 @@ export default function EmployeeDashboard() {
                             <div>🏁 End: {formatDateIST(exam.exams.end_time)}</div>
                           )}
                         </div>
-                        <div className="flex items-center justify-between">
-                          {!status.disabled && status.text === 'Available' ? (
-                            <button
-                              onClick={() => router.push(`/exam/${exam.exams?.id}`)}
-                              className="w-full px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
-                            >
-                              Start Exam
-                            </button>
-                          ) : (
-                            <div className="w-full text-center py-2">
-                              <span className={`text-sm font-medium px-3 py-1 rounded ${status.color}`}>
-                                {status.text}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-
+                        {!status.disabled && status.text === 'Available' ? (
+                          <button
+                            onClick={() => router.push(`/exam/${exam.exams?.id}`)}
+                            className="w-full px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
+                          >
+                            Start Exam
+                          </button>
+                        ) : null}
                       </div>
                     );
                   })}
@@ -263,7 +254,7 @@ export default function EmployeeDashboard() {
           <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
             <h2 className="text-xl font-bold text-gray-800 mb-4">All Assigned Exams</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {exams.filter(e => e.exams).map((exam) => {
+              {exams.filter(e => e.exams).sort((a, b) => new Date(b.exams.start_time) - new Date(a.exams.start_time)).map((exam) => {
                 const status = getExamStatus(exam);
                 return (
                   <div key={exam.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
@@ -284,22 +275,14 @@ export default function EmployeeDashboard() {
                         <div>🏁 End: {formatDateIST(exam.exams.end_time)}</div>
                       )}
                     </div>
-                    <div className="flex items-center justify-between">
-                      {!status.disabled && status.text === 'Available' ? (
-                        <button
-                          onClick={() => router.push(`/exam/${exam.exams?.id}`)}
-                          className="w-full px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
-                        >
-                          Start
-                        </button>
-                      ) : (
-                        <div className="w-full text-center py-2">
-                          <span className={`text-sm font-medium px-3 py-1 rounded ${status.color}`}>
-                            {status.text}
-                          </span>
-                        </div>
-                      )}
-                    </div>
+                    {!status.disabled && status.text === 'Available' ? (
+                      <button
+                        onClick={() => router.push(`/exam/${exam.exams?.id}`)}
+                        className="w-full px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition"
+                      >
+                        Start
+                      </button>
+                    ) : null}
                   </div>
                 );
               })}

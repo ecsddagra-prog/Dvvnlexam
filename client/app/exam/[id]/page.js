@@ -16,6 +16,8 @@ export default function ExamPage() {
   const [submitting, setSubmitting] = useState(false);
   const [startTime, setStartTime] = useState(null);
   const [serverStartTime, setServerStartTime] = useState(null);
+  const [questionPage, setQuestionPage] = useState(0);
+  const questionsPerPage = 15;
 
   const autosave = useCallback(async () => {
     if (Object.keys(answers).length > 0) {
@@ -319,28 +321,72 @@ export default function ExamPage() {
         </div>
       </div>
 
-      <div className="flex">
+      <div className="flex flex-col md:flex-row">
         {/* Question Navigation */}
-        <div className="w-64 bg-white p-4 shadow-md">
-          <h3 className="font-semibold mb-4">Questions</h3>
-          <div className="grid grid-cols-5 gap-2">
-            {questions.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentQuestion(index)}
-                className={`w-10 h-10 rounded text-sm font-medium ${
-                  index === currentQuestion
-                    ? 'bg-blue-600 text-white'
-                    : answers[questions[index]?.id]
-                    ? 'bg-green-200 text-green-800'
-                    : 'bg-gray-200 text-gray-600'
-                }`}
-              >
-                {index + 1}
-              </button>
-            ))}
+        <div className="w-full md:w-64 bg-white p-4 shadow-md">
+          <h3 className="font-semibold mb-2">Questions</h3>
+          
+          {/* Legend */}
+          <div className="mb-3 text-xs space-y-1">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-blue-600 rounded"></div>
+              <span>Current</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-green-500 rounded"></div>
+              <span>Answered</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-gray-300 rounded"></div>
+              <span>Not Answered</span>
+            </div>
           </div>
-          <div className="mt-4 text-sm text-gray-600">
+
+          <div className="grid grid-cols-5 gap-2">
+            {questions.slice(questionPage * questionsPerPage, (questionPage + 1) * questionsPerPage).map((_, idx) => {
+              const index = questionPage * questionsPerPage + idx;
+              return (
+                <button
+                  key={index}
+                  onClick={() => setCurrentQuestion(index)}
+                  className={`w-10 h-10 rounded text-sm font-medium transition ${
+                    index === currentQuestion
+                      ? 'bg-blue-600 text-white shadow-lg'
+                      : answers[questions[index]?.id]
+                      ? 'bg-green-500 text-white hover:bg-green-600'
+                      : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+                  }`}
+                >
+                  {index + 1}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Pagination */}
+          {questions.length > questionsPerPage && (
+            <div className="flex justify-between items-center mt-3">
+              <button
+                onClick={() => setQuestionPage(Math.max(0, questionPage - 1))}
+                disabled={questionPage === 0}
+                className="px-2 py-1 text-xs bg-gray-200 rounded disabled:opacity-50"
+              >
+                ← Prev
+              </button>
+              <span className="text-xs text-gray-600">
+                {questionPage + 1}/{Math.ceil(questions.length / questionsPerPage)}
+              </span>
+              <button
+                onClick={() => setQuestionPage(Math.min(Math.ceil(questions.length / questionsPerPage) - 1, questionPage + 1))}
+                disabled={questionPage >= Math.ceil(questions.length / questionsPerPage) - 1}
+                className="px-2 py-1 text-xs bg-gray-200 rounded disabled:opacity-50"
+              >
+                Next →
+              </button>
+            </div>
+          )}
+
+          <div className="mt-4 text-sm text-gray-600 border-t pt-3">
             <div>Answered: {Object.keys(answers).length}/{questions.length}</div>
             <div>Remaining: {questions.length - Object.keys(answers).length}</div>
           </div>

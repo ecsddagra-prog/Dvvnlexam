@@ -10,6 +10,12 @@ export default requireAuth(async (req, res) => {
   const { answers, totalTime, submittedAt, clientScore, clientPercentage } = req.body;
   const userId = req.user.id;
 
+  const { data: exam } = await supabase
+    .from('exams')
+    .select('passing_score')
+    .eq('id', examId)
+    .single();
+
   const { data: questions } = await supabase
     .from('exam_questions')
     .select('questions(*)')
@@ -57,8 +63,16 @@ export default requireAuth(async (req, res) => {
 
   await supabase.rpc('update_exam_ranks', { exam_id_param: examId });
 
+  const passingScore = exam?.passing_score || 50;
+  const status = percentage >= passingScore ? 'passed' : 'failed';
+
+  await supabase
+    .from('exam_results')
+    .update({ status: status })
+    .eq('id', result.id);
+
   res.json({
-    result: result,
-    message: percentage >= 50 ? 'Congratulations! You passed the exam.' : 'Better luck next time!'
+    result: { ...result, status: status },
+    message: percentage >= passingScore ? 'Congratulations! You passed the exam.' : 'Better luck next time!'
   });
 });

@@ -1,0 +1,11 @@
+create-exam
+assign-questions
+assign-exam
+upload-employees
+upload-questions
+exam-results
+reexam-requests
+manage-exams
+employee-management
+pending-questions
+assign-questions-contributor
