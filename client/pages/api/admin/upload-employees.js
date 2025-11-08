@@ -1,6 +1,6 @@
 import multer from 'multer';
 import xlsx from 'xlsx';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { supabase } from '../../../lib/supabase';
 import { requireRole } from '../../../lib/auth';
 
