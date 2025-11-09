@@ -66,6 +66,20 @@ export default requireAuth(async function handler(req, res) {
             throw new Error('Failed to get logo URL');
           }
 
+          // Save logo URL to certificate settings
+          const { error: updateError } = await supabase
+            .from('certificate_settings')
+            .upsert({
+              id: 1,
+              logo_url: urlData.publicUrl,
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'id' });
+
+          if (updateError) {
+            console.error('Failed to save logo URL:', updateError);
+            // Don't throw, just log
+          }
+
           res.json({
             success: true,
             logoUrl: urlData.publicUrl,

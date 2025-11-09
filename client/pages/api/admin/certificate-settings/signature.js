@@ -66,6 +66,20 @@ export default requireAuth(async function handler(req, res) {
             throw new Error('Failed to get signature URL');
           }
 
+          // Save signature URL to certificate settings
+          const { error: updateError } = await supabase
+            .from('certificate_settings')
+            .upsert({
+              id: 1,
+              signature_url: urlData.publicUrl,
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'id' });
+
+          if (updateError) {
+            console.error('Failed to save signature URL:', updateError);
+            // Don't throw, just log
+          }
+
           res.json({
             success: true,
             signatureUrl: urlData.publicUrl,

@@ -1,27 +1,8 @@
 import PDFDocument from 'pdfkit';
 import QRCode from 'qrcode';
-import https from 'https';
-import http from 'http';
-
-// Helper function to download image from URL
-function downloadImage(url) {
-  return new Promise((resolve, reject) => {
-    const protocol = url.startsWith('https') ? https : http;
-    protocol.get(url, (response) => {
-      if (response.statusCode !== 200) {
-        reject(new Error(`Failed to download image: ${response.statusCode}`));
-        return;
-      }
-
-      const chunks = [];
-      response.on('data', (chunk) => chunks.push(chunk));
-      response.on('end', () => resolve(Buffer.concat(chunks)));
-    }).on('error', reject);
-  });
-}
 
 export async function generateCertificatePDF(data) {
-  const { employeeName, examTitle, score, percentage, rank, date, certificateNumber, settings } = data;
+  const { employeeName, examTitle, score, percentage, rank, date, certificateNumber, settings, logoBuffer, signatureBuffer } = data;
 
   return new Promise(async (resolve, reject) => {
     try {
@@ -126,9 +107,8 @@ export async function generateCertificatePDF(data) {
       let currentY = 100;
 
       // Logo
-      if (certSettings.logoUrl) {
+      if (logoBuffer) {
         try {
-          const logoBuffer = await downloadImage(certSettings.logoUrl);
           const logoX = (doc.page.width - (certSettings.logoWidth || 150)) / 2; // Center horizontally
           doc.image(logoBuffer, logoX, currentY, {
             width: certSettings.logoWidth || 150,
@@ -216,9 +196,8 @@ export async function generateCertificatePDF(data) {
       }
 
       // Signature Image
-      if (certSettings.signatureUrl && certSettings.showSignature) {
+      if (signatureBuffer && certSettings.showSignature) {
         try {
-          const signatureBuffer = await downloadImage(certSettings.signatureUrl);
           const signatureX = (doc.page.width - (certSettings.signatureWidth || 120)) / 2; // Center horizontally
           const signatureY = doc.page.height - 140; // Position near bottom
           doc.image(signatureBuffer, signatureX, signatureY, {

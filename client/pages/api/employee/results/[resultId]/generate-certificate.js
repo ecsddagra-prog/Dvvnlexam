@@ -1,6 +1,7 @@
 import { requireAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { generateCertificatePDF } from '@/lib/certificateGenerator';
+import { createClient } from '@supabase/supabase-js';
 
 // Helper function to convert database column names to camelCase
 function dbToCamelCase(dbObj) {
@@ -133,6 +134,43 @@ export default requireAuth(async function handler(req, res) {
       showRank: true
     };
 
+    // Create authenticated Supabase client for downloads
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    const supabaseAuth = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: `Bearer ${token}` } }
+    });
+
+    // Download logo and signature buffers
+    let logoBuffer = null;
+    if (settings.logoUrl) {
+      try {
+        const logoPath = settings.logoUrl.split('/logos/')[1];
+        if (logoPath) {
+          const { data, error } = await supabaseAuth.storage.from('certificates').download(`logos/${logoPath}`);
+          if (!error && data) {
+            logoBuffer = Buffer.from(await data.arrayBuffer());
+          }
+        }
+      } catch (e) {
+        console.log('Logo download failed:', e.message);
+      }
+    }
+
+    let signatureBuffer = null;
+    if (settings.signatureUrl) {
+      try {
+        const signaturePath = settings.signatureUrl.split('/signatures/')[1];
+        if (signaturePath) {
+          const { data, error } = await supabaseAuth.storage.from('certificates').download(`signatures/${signaturePath}`);
+          if (!error && data) {
+            signatureBuffer = Buffer.from(await data.arrayBuffer());
+          }
+        }
+      } catch (e) {
+        console.log('Signature download failed:', e.message);
+      }
+    }
+
     // Generate PDF with custom settings
     const pdfBuffer = await generateCertificatePDF({
       employeeName: result.users?.name || 'N/A',
@@ -142,7 +180,9 @@ export default requireAuth(async function handler(req, res) {
       rank: result.rank,
       date: result.submitted_at,
       certificateNumber,
-      settings: settings
+      settings: settings,
+      logoBuffer,
+      signatureBuffer
     });
 
     // Upload to Supabase Storage
