@@ -272,20 +272,20 @@ export default function EmployeeDashboard() {
             </button>
 
             <button
-              onClick={() => setActiveTab('exams')}
+              onClick={() => setActiveTab('completed')}
               className={`bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white transform hover:scale-105 transition text-left ${
-                activeTab === 'exams' ? 'ring-4 ring-green-300' : ''
+                activeTab === 'completed' ? 'ring-4 ring-green-300' : ''
               }`}
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-green-100 text-sm font-medium">Exams</p>
-                  <p className="text-4xl font-bold mt-2">{exams.length}</p>
-                  <p className="text-green-100 text-xs mt-1">Total Assigned</p>
+                  <p className="text-green-100 text-sm font-medium">Completed</p>
+                  <p className="text-4xl font-bold mt-2">{dashboard.completedExams}</p>
+                  <p className="text-green-100 text-xs mt-1">Completed Exams</p>
                 </div>
                 <div className="bg-white bg-opacity-20 rounded-full p-3">
                   <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
               </div>
@@ -333,20 +333,24 @@ export default function EmployeeDashboard() {
           </div>
         )}
 
+
+
         {/* Dashboard Tab */}
         {activeTab === 'dashboard' && (
-          <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Available Exams</h2>
-              {exams.filter(e => !e.completed_at && !e.exams?.is_expired).length === 0 ? (
+          <div className="space-y-6">
+            {/* Upcoming/Available Exams Section */}
+            <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+              <h2 className="text-xl font-bold text-gray-800 mb-4">📝 Upcoming & Available Exams</h2>
+              {exams.filter(e => e.exams && !e.exams.is_expired).length === 0 ? (
                 <div className="text-center py-12">
                   <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  <p className="text-gray-500">No exams available at the moment</p>
+                  <p className="text-gray-500">No upcoming exams at the moment</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {exams.filter(e => !e.completed_at && e.exams && !e.exams.is_expired).sort((a, b) => new Date(b.exams.start_time) - new Date(a.exams.start_time)).slice(0, 4).map((exam) => {
+                  {exams.filter(e => e.exams && !e.exams.is_expired && !e.exams.is_submitted).sort((a, b) => new Date(a.exams.start_time) - new Date(b.exams.start_time)).map((exam) => {
                     const status = getExamStatus(exam);
                     return (
                       <div key={exam.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
@@ -380,6 +384,89 @@ export default function EmployeeDashboard() {
                   })}
                 </div>
               )}
+            </div>
+
+            {/* Completed Exams Section */}
+            <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+              <h2 className="text-xl font-bold text-gray-800 mb-4">✅ Completed Exams</h2>
+              {exams.filter(e => e.exams?.is_submitted).length === 0 ? (
+                <div className="text-center py-12">
+                  <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  <p className="text-gray-500">No completed exams yet</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {exams.filter(e => e.exams?.is_submitted).sort((a, b) => new Date(b.exams.start_time) - new Date(a.exams.start_time)).map((exam) => (
+                    <div key={exam.id} className="border border-green-200 bg-green-50 rounded-lg p-4 hover:shadow-md transition">
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-semibold text-gray-800">{exam.exams?.title || 'Untitled Exam'}</h3>
+                        <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800">
+                          ✓ Completed
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-3">{exam.exams?.description || ''}</p>
+                      <div className="text-xs text-gray-500 mb-3 space-y-1">
+                        <div>⏱️ Duration: {exam.exams?.duration || 0} min</div>
+                        <div>🎯 Pass: {exam.exams?.passing_score || 50}%</div>
+                        {exam.exams?.start_time && (
+                          <div>📅 Date: {formatDateIST(exam.exams.start_time)}</div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => setActiveTab('results')}
+                        className="w-full px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition"
+                      >
+                        View Results
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Completed Tab */}
+        {activeTab === 'completed' && (
+          <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">✅ Completed Exams</h2>
+            {exams.filter(e => e.exams?.is_submitted).length === 0 ? (
+              <div className="text-center py-12">
+                <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                <p className="text-gray-500">No completed exams yet</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {exams.filter(e => e.exams?.is_submitted).sort((a, b) => new Date(b.exams.start_time) - new Date(a.exams.start_time)).map((exam) => (
+                  <div key={exam.id} className="border border-green-200 bg-green-50 rounded-lg p-4 hover:shadow-md transition">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-semibold text-gray-800">{exam.exams?.title || 'Untitled Exam'}</h3>
+                      <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800">
+                        ✓ Completed
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-3">{exam.exams?.description || ''}</p>
+                    <div className="text-xs text-gray-500 mb-3 space-y-1">
+                      <div>⏱️ Duration: {exam.exams?.duration || 0} min</div>
+                      <div>🎯 Pass: {exam.exams?.passing_score || 50}%</div>
+                      {exam.exams?.start_time && (
+                        <div>📅 Date: {formatDateIST(exam.exams.start_time)}</div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setActiveTab('results')}
+                      className="w-full px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition"
+                    >
+                      View Results
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -578,12 +665,12 @@ export default function EmployeeDashboard() {
                           onClick={() => showResponses(result.id, 'wrong')}
                           className="text-center p-2 bg-red-50 rounded hover:bg-red-100 transition cursor-pointer"
                         >
-                          <div className="text-xl font-bold text-red-600">{result.total_questions - result.score}</div>
+                          <div className="text-xl font-bold text-red-600">{(result.attempted_questions || result.total_questions) - result.score}</div>
                           <div className="text-xs text-gray-600">Wrong</div>
                         </button>
                         <div className="text-center p-2 bg-gray-50 rounded">
-                          <div className="text-xl font-bold text-gray-600">{result.total_questions}</div>
-                          <div className="text-xs text-gray-600">Total</div>
+                          <div className="text-xl font-bold text-gray-600">{result.attempted_questions !== null && result.attempted_questions !== undefined ? result.attempted_questions : result.total_questions}/{result.total_questions}</div>
+                          <div className="text-xs text-gray-600">Attempted</div>
                         </div>
                         <div className="text-center p-2 bg-blue-50 rounded">
                           <div className="text-xl font-bold text-blue-600">{result.percentage.toFixed(1)}%</div>

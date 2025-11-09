@@ -378,7 +378,7 @@ export default function AdminDashboard() {
     const [selectedSubject, setSelectedSubject] = useState('');
     const [selectedDifficulty, setSelectedDifficulty] = useState('');
     const [selectedMajorSubject, setSelectedMajorSubject] = useState('');
-    const [selectedLevel, setSelectedLevel] = useState('');
+
     const [selectedLot, setSelectedLot] = useState('');
 
     useEffect(() => {
@@ -388,7 +388,7 @@ export default function AdminDashboard() {
 
     useEffect(() => {
       filterQuestions();
-    }, [questions, searchTerm, selectedSubject, selectedDifficulty, selectedMajorSubject, selectedLevel, selectedLot]);
+    }, [questions, searchTerm, selectedSubject, selectedDifficulty, selectedMajorSubject, selectedLot]);
 
     const loadExams = async () => {
       try {
@@ -434,10 +434,7 @@ export default function AdminDashboard() {
         filtered = filtered.filter(q => q.major_subject === selectedMajorSubject);
       }
 
-      // Filter by level
-      if (selectedLevel) {
-        filtered = filtered.filter(q => q.level === selectedLevel);
-      }
+
 
       // Filter by lot
       if (selectedLot) {
@@ -547,20 +544,7 @@ export default function AdminDashboard() {
                 </select>
               </div>
 
-              {/* Level Filter */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Level</label>
-                <select
-                  value={selectedLevel}
-                  onChange={(e) => setSelectedLevel(e.target.value)}
-                  className="w-full p-3 border rounded-lg"
-                >
-                  <option value="">All Levels</option>
-                  {[...new Set(questions.map(q => q.level).filter(Boolean))].sort().map((level) => (
-                    <option key={level} value={level}>{level}</option>
-                  ))}
-                </select>
-              </div>
+
 
               {/* Difficulty Filter */}
               <div>
@@ -600,7 +584,6 @@ export default function AdminDashboard() {
               Showing {filteredQuestions.length} of {questions.length} questions
               {selectedMajorSubject && ` • Major Subject: ${selectedMajorSubject}`}
               {selectedSubject && ` • Subject: ${selectedSubject}`}
-              {selectedLevel && ` • Level: ${selectedLevel}`}
               {selectedDifficulty && ` • Difficulty: ${selectedDifficulty.charAt(0).toUpperCase() + selectedDifficulty.slice(1)}`}
               {selectedLot && ` • Lot: ${selectedLot}`}
             </div>
@@ -1165,7 +1148,7 @@ export default function AdminDashboard() {
                 {results.map((result) => (
                   <tr key={result.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm font-medium">{result.users?.name || 'N/A'}</td>
-                    <td className="px-4 py-3 text-sm">{result.score}/{result.total_marks}</td>
+                    <td className="px-4 py-3 text-sm">{result.attempted_questions !== null && result.attempted_questions !== undefined ? result.attempted_questions : result.total_questions || 0}/{result.total_questions || 0}</td>
                     <td className="px-4 py-3 text-sm">{result.percentage}%</td>
                     <td className="px-4 py-3 text-sm">
                       <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">
@@ -1176,7 +1159,7 @@ export default function AdminDashboard() {
                       <span className={`px-2 py-1 rounded text-xs font-medium ${
                         result.status === 'passed' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                       }`}>
-                        {result.status}
+                        {result.status === 'passed' ? 'PASS' : 'FAILED'}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500">

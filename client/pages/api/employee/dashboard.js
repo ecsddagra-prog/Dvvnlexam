@@ -8,12 +8,17 @@ export default requireAuth(async (req, res) => {
 
   const [assignedExams, completedResults] = await Promise.all([
     supabase.from('exam_assignments').select('*, exams(end_time)').eq('user_id', userId),
-    supabase.from('exam_results').select('percentage').eq('user_id', userId)
+    supabase.from('exam_results').select('exam_id, percentage').eq('user_id', userId)
   ]);
+
+  // Get submitted exam IDs
+  const submittedExamIds = new Set(completedResults.data?.map(r => r.exam_id) || []);
 
   const now = new Date();
   const pendingExams = assignedExams.data?.filter(a => {
-    if (a.completed_at) return false;
+    // Check if exam is submitted
+    if (submittedExamIds.has(a.exam_id)) return false;
+    // Check if exam is expired
     const isExpired = a.exams?.end_time && new Date(a.exams.end_time) < now;
     return !isExpired;
   }).length || 0;

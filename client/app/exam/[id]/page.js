@@ -300,6 +300,10 @@ export default function ExamPage() {
 
   if (loading) return <div className="flex justify-center items-center h-screen">Loading exam...</div>;
 
+  if (!exam) {
+    return <div className="flex justify-center items-center h-screen">Exam not found or already submitted.</div>;
+  }
+
   const question = questions[currentQuestion];
 
   return (

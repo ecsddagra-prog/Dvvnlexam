@@ -23,11 +23,15 @@ export default requireAuth(async (req, res) => {
 
   let score = 0;
   const totalQuestions = questions.length;
+  let attemptedQuestions = 0;
 
   questions.forEach(eq => {
     const userAnswer = answers[eq.questions.id];
-    if (userAnswer === eq.questions.correct_answer) {
-      score++;
+    if (userAnswer !== undefined && userAnswer !== null && userAnswer !== '') {
+      attemptedQuestions++;
+      if (userAnswer === eq.questions.correct_answer) {
+        score++;
+      }
     }
   });
 
@@ -47,6 +51,7 @@ export default requireAuth(async (req, res) => {
     answers: answers,
     score: score,
     total_questions: totalQuestions,
+    attempted_questions: attemptedQuestions,
     percentage: percentage,
     total_time: totalTime,
     submitted_at: submittedAt,
