@@ -14,5 +14,20 @@ export default requireAuth(async (req, res) => {
     .eq('user_id', userId);
 
   if (error) return res.status(400).json({ error: error.message });
-  res.json(data);
+  
+  const now = new Date();
+  const filteredData = data.map(assignment => {
+    const exam = assignment.exams;
+    const isExpired = exam.end_time && new Date(exam.end_time) < now;
+    
+    return {
+      ...assignment,
+      exams: {
+        ...exam,
+        is_expired: isExpired
+      }
+    };
+  });
+  
+  res.json(filteredData);
 });

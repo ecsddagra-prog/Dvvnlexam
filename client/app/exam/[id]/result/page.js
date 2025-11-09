@@ -138,21 +138,47 @@ export default function ExamResultPage() {
               </div>
             </div>
 
-            {result.certificate_url && (
+            {passed && (
               <div className="bg-blue-50 p-4 rounded-lg mb-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-semibold text-blue-800">Certificate Available</h3>
-                    <p className="text-blue-600 text-sm">Download your completion certificate</p>
+                    <h3 className="font-semibold text-blue-800">🎓 Certificate</h3>
+                    <p className="text-blue-600 text-sm">
+                      {result.certificate_url ? 'Download your completion certificate' : 'Generate your completion certificate'}
+                    </p>
                   </div>
-                  <a
-                    href={result.certificate_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                  >
-                    Download
-                  </a>
+                  {result.certificate_url ? (
+                    <a
+                      href={result.certificate_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                    >
+                      📥 Download
+                    </a>
+                  ) : (
+                    <button
+                      onClick={async () => {
+                        try {
+                          const token = localStorage.getItem('token');
+                          const res = await fetch(`/api/employee/results/${result.id}/generate-certificate`, {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${token}` }
+                          });
+                          const data = await res.json();
+                          if (data.certificateUrl) {
+                            setResult({ ...result, certificate_url: data.certificateUrl });
+                            alert('Certificate generated successfully!');
+                          }
+                        } catch (err) {
+                          alert('Failed to generate certificate');
+                        }
+                      }}
+                      className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                    >
+                      ✨ Generate Certificate
+                    </button>
+                  )}
                 </div>
               </div>
             )}

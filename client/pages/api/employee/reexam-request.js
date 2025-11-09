@@ -14,16 +14,36 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Exam ID and reason required' });
     }
 
+    // Check if request already exists for this exam
+    const { data: existingRequest } = await supabase
+      .from('reexam_requests')
+      .select('id, status')
+      .eq('employee_id', decoded.id)
+      .eq('exam_id', examId)
+      .single();
+
+    if (existingRequest) {
+      if (existingRequest.status === 'pending') {
+        return res.status(400).json({ error: 'Re-exam request already submitted for this exam' });
+      }
+      if (existingRequest.status === 'approved') {
+        return res.status(400).json({ error: 'Re-exam request already approved for this exam' });
+      }
+    }
+
     const { error } = await supabase
       .from('reexam_requests')
       .insert({
         employee_id: decoded.id,
         exam_id: examId,
-        reason,
+        reason: reason.trim(),
         status: 'pending'
       });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Re-exam request insert error:', error);
+      throw new Error('Failed to submit re-exam request');
+    }
 
     res.json({ message: 'Re-exam request submitted successfully' });
   } catch (error) {

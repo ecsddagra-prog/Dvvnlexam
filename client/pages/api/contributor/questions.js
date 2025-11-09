@@ -5,7 +5,7 @@ export default requireRole('contributor')(async (req, res) => {
   const userId = req.user.id;
 
   if (req.method === 'POST') {
-    const { question, options, correctAnswer, category, difficulty } = req.body;
+    const { question, options, correctAnswer, category, difficulty, majorSubject, lot } = req.body;
 
     const questionData = {
       question,
@@ -14,6 +14,8 @@ export default requireRole('contributor')(async (req, res) => {
       correct_answer: correctAnswer,
       category,
       difficulty,
+      lot,
+      major_subject: majorSubject,
       status: 'pending',
       created_by: userId
     };

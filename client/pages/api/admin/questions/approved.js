@@ -17,7 +17,9 @@ export default requireRole('admin')(async (req, res) => {
   const formatted = data.map(q => ({
     ...q,
     question_text: q.question,
-    subject: q.category || q.subject
+    subject: q.category || q.subject,
+    lot: q.lot || null,
+    major_subject: q.major_subject || null
   }));
   
   res.json(formatted);

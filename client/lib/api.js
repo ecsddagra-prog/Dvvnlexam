@@ -86,7 +86,7 @@ export const rejectQuestion = async (id) => {
 };
 
 export const getExamResults = async (examId) => {
-  const { data } = await api.get(`/admin/results/${examId}`);
+  const { data } = await api.get(`/admin/results/exam-results?examId=${examId}`);
   return data;
 };
 
@@ -274,5 +274,20 @@ export const bulkAssignQuestions = async (questionIds, contributorId, filters) =
 
 export const getAssignedQuestions = async () => {
   const { data } = await api.get('/contributor/questions?assigned=true');
+  return data;
+};
+
+// Certificate settings functions
+export const uploadCertificateLogo = async (file) => {
+  const formData = new FormData();
+  formData.append('logo', file);
+  const { data } = await api.post('/admin/certificate-settings/logo', formData);
+  return data;
+};
+
+export const uploadCertificateSignature = async (file) => {
+  const formData = new FormData();
+  formData.append('signature', file);
+  const { data } = await api.post('/admin/certificate-settings/signature', formData);
   return data;
 };

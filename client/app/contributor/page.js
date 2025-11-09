@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   addQuestion, 
   getMyQuestions, 
@@ -14,291 +15,280 @@ import {
 import Head from 'next/head';
 
 function EditableQuestionCard({ question, onUpdate, setFeedback }) {
-  const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     question: question.question,
     options: question.options || { A: '', B: '', C: '', D: '' },
     correctAnswer: question.correct_answer,
     difficulty: question.difficulty,
     subject: question.category || question.subject || '',
-    lot: question.lot || ''
+    lot: question.lot || '',
+    majorSubject: question.major_subject || ''
   });
 
-  const handleUpdate = async () => {
+  const handleUpdate = async (field, value) => {
+    const updated = { ...form, [field]: value };
+    setForm(updated);
     try {
       await updateQuestion(question.id, {
-        ...form,
-        category: form.subject
+        ...updated,
+        category: updated.subject,
+        majorSubject: updated.majorSubject
       });
-      setFeedback({ success: 'Question updated successfully!' });
-      setEditing(false);
+      setFeedback({ success: 'Updated!' });
+      setTimeout(() => setFeedback({ success: '' }), 2000);
       onUpdate();
     } catch (err) {
-      setFeedback({ error: err.response?.data?.error || 'Failed to update question.' });
+      setFeedback({ error: err.response?.data?.error || 'Failed to update.' });
     }
   };
 
-  if (editing) {
-    return (
-      <div className="border rounded-lg p-4 bg-blue-50">
+  return (
+    <div className="border-2 border-blue-200 rounded-xl p-5 bg-gradient-to-r from-blue-50 to-indigo-50 hover:shadow-lg transition-all">
+      <div className="mb-3">
+        <label className="text-xs font-semibold text-gray-600 mb-1 block">Question</label>
         <textarea
           value={form.question}
-          onChange={(e) => setForm({ ...form, question: e.target.value })}
-          className="w-full p-3 mb-3 border rounded"
-          rows="3"
-          placeholder="Question text"
+          onChange={(e) => handleUpdate('question', e.target.value)}
+          className="w-full p-3 border-2 border-blue-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+          rows="2"
         />
-        <div className="grid grid-cols-2 gap-2 mb-3">
-          {Object.entries(form.options).map(([key, value]) => (
+      </div>
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        {Object.entries(form.options).map(([key, value]) => (
+          <div key={key}>
+            <label className="text-xs font-semibold text-gray-600 mb-1 block">Option {key}</label>
             <input
-              key={key}
               type="text"
-              placeholder={`Option ${key}`}
               value={value}
-              onChange={(e) => setForm({ 
-                ...form, 
-                options: { ...form.options, [key]: e.target.value } 
-              })}
-              className="p-2 border rounded"
+              onChange={(e) => handleUpdate('options', { ...form.options, [key]: e.target.value })}
+              className={`w-full p-2 border-2 rounded-lg transition-all ${
+                form.correctAnswer === key 
+                  ? 'border-green-400 bg-green-50 font-semibold' 
+                  : 'border-gray-300 focus:border-blue-500'
+              }`}
             />
-          ))}
-        </div>
-        <div className="grid grid-cols-4 gap-2 mb-3">
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-5 gap-3 mb-3">
+        <div>
+          <label className="text-xs font-semibold text-gray-600 mb-1 block">Correct</label>
           <select
             value={form.correctAnswer}
-            onChange={(e) => setForm({ ...form, correctAnswer: e.target.value })}
-            className="p-2 border rounded"
+            onChange={(e) => handleUpdate('correctAnswer', e.target.value)}
+            className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-blue-500"
           >
-            <option value="">Correct Answer</option>
             <option value="A">A</option>
             <option value="B">B</option>
             <option value="C">C</option>
             <option value="D">D</option>
           </select>
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-gray-600 mb-1 block">Difficulty</label>
           <select
             value={form.difficulty}
-            onChange={(e) => setForm({ ...form, difficulty: e.target.value })}
-            className="p-2 border rounded"
+            onChange={(e) => handleUpdate('difficulty', e.target.value)}
+            className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-blue-500"
           >
             <option value="easy">Easy</option>
             <option value="medium">Medium</option>
             <option value="hard">Hard</option>
           </select>
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-gray-600 mb-1 block">Subject</label>
           <input
             type="text"
-            placeholder="Subject"
             value={form.subject}
-            onChange={(e) => setForm({ ...form, subject: e.target.value })}
-            className="p-2 border rounded"
-          />
-          <input
-            type="text"
-            placeholder="Lot"
-            value={form.lot}
-            onChange={(e) => setForm({ ...form, lot: e.target.value })}
-            className="p-2 border rounded"
+            onChange={(e) => handleUpdate('subject', e.target.value)}
+            className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-blue-500"
           />
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={handleUpdate}
-            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-          >
-            Save Changes
-          </button>
-          <button
-            onClick={() => setEditing(false)}
-            className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500"
-          >
-            Cancel
-          </button>
+        <div>
+          <label className="text-xs font-semibold text-gray-600 mb-1 block">Lot</label>
+          <input
+            type="text"
+            value={form.lot}
+            onChange={(e) => handleUpdate('lot', e.target.value)}
+            className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-blue-500"
+          />
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-gray-600 mb-1 block">Major Subject</label>
+          <input
+            type="text"
+            value={form.majorSubject}
+            onChange={(e) => handleUpdate('majorSubject', e.target.value)}
+            className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-blue-500"
+            placeholder="e.g., Electrical"
+          />
         </div>
       </div>
-    );
-  }
-
-  return (
-    <div className="border rounded-lg p-4">
-      <p className="font-semibold mb-2">{question.question}</p>
-      {question.options && (
-        <div className="grid grid-cols-2 gap-2 mb-2 text-sm text-gray-600">
-          {Object.entries(question.options).map(([key, value]) => (
-            <p key={key} className={question.correct_answer === key ? 'text-green-600 font-medium' : ''}>
-              {key}) {value}
-            </p>
-          ))}
-        </div>
-      )}
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4 text-sm">
-          <span className={`px-2 py-1 rounded text-xs ${
-            question.status === 'approved' ? 'bg-green-100 text-green-800' :
-            question.status === 'rejected' ? 'bg-red-100 text-red-800' :
-            'bg-yellow-100 text-yellow-800'
-          }`}>
-            {question.status}
-          </span>
-          <span className="text-gray-600">Difficulty: {question.difficulty}</span>
-          <span className="text-gray-600">Subject: {question.category || question.subject || 'N/A'}</span>
-          {question.lot && <span className="text-gray-600">Lot: {question.lot}</span>}
-        </div>
-        <button
-          onClick={() => setEditing(true)}
-          className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-        >
-          Edit All Details
-        </button>
+        <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+          question.status === 'approved' ? 'bg-green-500 text-white' :
+          question.status === 'rejected' ? 'bg-red-500 text-white' :
+          'bg-yellow-500 text-white'
+        }`}>
+          {question.status.toUpperCase()}
+        </span>
+        <span className="text-xs text-gray-500 italic">Auto-saves on change</span>
       </div>
     </div>
   );
 }
 
 function QuestionCard({ question, onUpdate, setFeedback }) {
-  const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     question: question.question,
     options: question.options || { A: '', B: '', C: '', D: '' },
     correctAnswer: question.correct_answer,
     difficulty: question.difficulty,
-    subject: question.category || question.subject || ''
+    subject: question.category || question.subject || '',
+    majorSubject: question.major_subject || ''
   });
 
-  const handleUpdate = async () => {
+  const handleUpdate = async (field, value) => {
+    const updated = { ...form, [field]: value };
+    setForm(updated);
     try {
       await updateQuestion(question.id, {
-        ...form,
-        category: form.subject
+        ...updated,
+        category: updated.subject,
+        majorSubject: updated.majorSubject
       });
-      setFeedback({ success: 'Question updated successfully!' });
-      setEditing(false);
+      setFeedback({ success: 'Updated!' });
+      setTimeout(() => setFeedback({ success: '' }), 2000);
       onUpdate();
     } catch (err) {
-      setFeedback({ error: err.response?.data?.error || 'Failed to update question.' });
+      setFeedback({ error: err.response?.data?.error || 'Failed to update.' });
     }
   };
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this question?')) return;
+    if (!confirm('Delete this question?')) return;
     try {
       await deleteQuestion(question.id);
-      setFeedback({ success: 'Question deleted successfully!' });
+      setFeedback({ success: 'Deleted!' });
       onUpdate();
     } catch (err) {
-      setFeedback({ error: err.response?.data?.error || 'Failed to delete question.' });
+      setFeedback({ error: 'Failed to delete.' });
     }
   };
 
-  if (editing) {
-    return (
-      <div className="border rounded-lg p-4 bg-gray-50">
+  return (
+    <div className="border-2 border-purple-200 rounded-xl p-5 bg-gradient-to-r from-purple-50 to-pink-50 hover:shadow-lg transition-all">
+      <div className="mb-3">
+        <label className="text-xs font-semibold text-gray-600 mb-1 block">Question</label>
         <textarea
           value={form.question}
-          onChange={(e) => setForm({ ...form, question: e.target.value })}
-          className="w-full p-2 mb-2 border rounded"
-          rows="3"
+          onChange={(e) => handleUpdate('question', e.target.value)}
+          className="w-full p-3 border-2 border-purple-200 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
+          rows="2"
+          disabled={question.status !== 'pending'}
         />
-        <div className="grid grid-cols-2 gap-2 mb-2">
-          {Object.entries(form.options).map(([key, value]) => (
+      </div>
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        {Object.entries(form.options).map(([key, value]) => (
+          <div key={key}>
+            <label className="text-xs font-semibold text-gray-600 mb-1 block">Option {key}</label>
             <input
-              key={key}
               type="text"
-              placeholder={`Option ${key}`}
               value={value}
-              onChange={(e) => setForm({ 
-                ...form, 
-                options: { ...form.options, [key]: e.target.value } 
-              })}
-              className="p-2 border rounded text-sm"
+              onChange={(e) => handleUpdate('options', { ...form.options, [key]: e.target.value })}
+              className={`w-full p-2 border-2 rounded-lg transition-all ${
+                form.correctAnswer === key 
+                  ? 'border-green-400 bg-green-50 font-semibold' 
+                  : 'border-gray-300 focus:border-purple-500'
+              }`}
+              disabled={question.status !== 'pending'}
             />
-          ))}
-        </div>
-        <div className="grid grid-cols-3 gap-2 mb-2">
-          <input
-            type="text"
-            placeholder="Correct Answer"
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-5 gap-3 mb-3">
+        <div>
+          <label className="text-xs font-semibold text-gray-600 mb-1 block">Correct</label>
+          <select
             value={form.correctAnswer}
-            onChange={(e) => setForm({ ...form, correctAnswer: e.target.value })}
-            className="p-2 border rounded text-sm"
-          />
+            onChange={(e) => handleUpdate('correctAnswer', e.target.value)}
+            className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-purple-500"
+            disabled={question.status !== 'pending'}
+          >
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+            <option value="D">D</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-gray-600 mb-1 block">Difficulty</label>
           <select
             value={form.difficulty}
-            onChange={(e) => setForm({ ...form, difficulty: e.target.value })}
-            className="p-2 border rounded text-sm"
+            onChange={(e) => handleUpdate('difficulty', e.target.value)}
+            className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-purple-500"
+            disabled={question.status !== 'pending'}
           >
             <option value="easy">Easy</option>
             <option value="medium">Medium</option>
             <option value="hard">Hard</option>
           </select>
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-gray-600 mb-1 block">Subject</label>
           <input
             type="text"
-            placeholder="Subject"
             value={form.subject}
-            onChange={(e) => setForm({ ...form, subject: e.target.value })}
-            className="p-2 border rounded text-sm"
+            onChange={(e) => handleUpdate('subject', e.target.value)}
+            className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-purple-500"
+            disabled={question.status !== 'pending'}
           />
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={handleUpdate}
-            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
-          >
-            Save
-          </button>
-          <button
-            onClick={() => setEditing(false)}
-            className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500 text-sm"
-          >
-            Cancel
-          </button>
+        <div>
+          <label className="text-xs font-semibold text-gray-600 mb-1 block">Lot</label>
+          <input
+            type="text"
+            value={form.lot || ''}
+            onChange={(e) => handleUpdate('lot', e.target.value)}
+            className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-purple-500"
+            disabled={question.status !== 'pending'}
+          />
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-gray-600 mb-1 block">Major Subject</label>
+          <input
+            type="text"
+            value={form.majorSubject}
+            onChange={(e) => handleUpdate('majorSubject', e.target.value)}
+            className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-purple-500"
+            placeholder="e.g., Civil"
+            disabled={question.status !== 'pending'}
+          />
         </div>
       </div>
-    );
-  }
-
-  return (
-    <div className="border rounded-lg p-4">
-      <p className="font-semibold mb-2">{question.question}</p>
-      {question.options && (
-        <div className="grid grid-cols-2 gap-2 mb-2 text-sm text-gray-600">
-          {Object.entries(question.options).map(([key, value]) => (
-            <p key={key} className={question.correct_answer === key ? 'text-green-600 font-medium' : ''}>
-              {key}) {value}
-            </p>
-          ))}
-        </div>
-      )}
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4 text-sm">
-          <span
-            className={`px-2 py-1 rounded text-xs ${
-              question.status === 'approved'
-                ? 'bg-green-100 text-green-800'
-                : question.status === 'rejected'
-                ? 'bg-red-100 text-red-800'
-                : 'bg-yellow-100 text-yellow-800'
-            }`}
-          >
-            {question.status}
-          </span>
-          <span className="text-gray-600">Difficulty: {question.difficulty}</span>
-          <span className="text-gray-600">Subject: {question.category || question.subject || 'N/A'}</span>
-        </div>
-        <div className="flex gap-2">
+        <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+          question.status === 'approved' ? 'bg-green-500 text-white' :
+          question.status === 'rejected' ? 'bg-red-500 text-white' :
+          'bg-yellow-500 text-white'
+        }`}>
+          {question.status.toUpperCase()}
+        </span>
+        <div className="flex gap-2 items-center">
           {question.status === 'pending' && (
             <>
-              <button
-                onClick={() => setEditing(true)}
-                className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-              >
-                Edit
-              </button>
+              <span className="text-xs text-gray-500 italic">Auto-saves</span>
               <button
                 onClick={handleDelete}
-                className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
+                className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium"
               >
-                Delete
+                🗑️ Delete
               </button>
             </>
+          )}
+          {question.status !== 'pending' && (
+            <span className="text-xs text-gray-500 italic">Read-only ({question.status})</span>
           )}
         </div>
       </div>
@@ -307,6 +297,7 @@ function QuestionCard({ question, onUpdate, setFeedback }) {
 }
 
 export default function ContributorDashboard() {
+  const router = useRouter();
   const [questions, setQuestions] = useState([]);
   const [allQuestions, setAllQuestions] = useState([]);
   const [assignedQuestions, setAssignedQuestions] = useState([]);
@@ -314,6 +305,7 @@ export default function ContributorDashboard() {
   const [file, setFile] = useState(null);
   const [activeTab, setActiveTab] = useState('profile');
   const [userProfile, setUserProfile] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [form, setForm] = useState({
     question: '',
     type: 'mcq',
@@ -321,6 +313,8 @@ export default function ContributorDashboard() {
     correctAnswer: '',
     difficulty: 'medium',
     subject: '',
+    lot: '',
+    majorSubject: '',
   });
   const [loading, setLoading] = useState({ 
     submit: false, 
@@ -330,12 +324,21 @@ export default function ContributorDashboard() {
   const [feedback, setFeedback] = useState({ error: '', success: '' });
 
   useEffect(() => {
+    const token = localStorage.getItem('token');
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    
+    if (!token || user.role !== 'contributor') {
+      router.push('/');
+      return;
+    }
+    
+    setIsAuthenticated(true);
     loadUserProfile();
     loadQuestions();
     loadAllQuestions();
     loadAssignedQuestions();
     loadStats();
-  }, []);
+  }, [router]);
 
   const loadUserProfile = async () => {
     try {
@@ -394,7 +397,9 @@ export default function ContributorDashboard() {
         ...form,
         options: form.options,
         correctAnswer: form.correctAnswer,
-        category: form.subject
+        category: form.subject,
+        lot: form.lot,
+        majorSubject: form.majorSubject
       });
       setFeedback({ success: 'Question submitted for approval!' });
       setForm({
@@ -404,6 +409,8 @@ export default function ContributorDashboard() {
         correctAnswer: '',
         difficulty: 'medium',
         subject: '',
+        lot: '',
+        majorSubject: '',
       });
       loadQuestions();
       loadAllQuestions();
@@ -437,6 +444,17 @@ export default function ContributorDashboard() {
       setLoading((prev) => ({ ...prev, upload: false }));
     }
   };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen p-8">
@@ -638,6 +656,22 @@ export default function ContributorDashboard() {
             placeholder="Subject"
             value={form.subject}
             onChange={(e) => setForm({ ...form, subject: e.target.value })}
+            className="w-full p-2 mb-2 border rounded"
+            disabled={loading.submit}
+          />
+          <input
+            type="text"
+            placeholder="Lot (e.g., Lot-1, Lot-2)"
+            value={form.lot}
+            onChange={(e) => setForm({ ...form, lot: e.target.value })}
+            className="w-full p-2 mb-2 border rounded"
+            disabled={loading.submit}
+          />
+          <input
+            type="text"
+            placeholder="Major Subject (e.g., Electrical Engineering, Civil Engineering)"
+            value={form.majorSubject}
+            onChange={(e) => setForm({ ...form, majorSubject: e.target.value })}
             className="w-full p-2 mb-2 border rounded"
             disabled={loading.submit}
           />

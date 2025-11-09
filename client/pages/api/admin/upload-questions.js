@@ -27,6 +27,8 @@ export default requireRole('admin')(async (req, res) => {
         correct_answer: String(row['Correct Answer']).trim().toUpperCase(),
         category: String(row.Subject || 'General').trim(),
         difficulty: String(row.Difficulty || 'medium').toLowerCase(),
+        lot: row['Lot'] ? String(row['Lot']).trim() : null,
+        major_subject: row['Major Subject'] ? String(row['Major Subject']).trim() : null,
         status: 'approved',
         created_by: req.user.id
       }));

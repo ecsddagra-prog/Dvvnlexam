@@ -1,5 +1,5 @@
-import { supabase } from '../../../../../lib/supabase';
-import { requireRole } from '../../../../../lib/auth';
+import { supabase } from '@/lib/supabase';
+import { requireRole } from '@/lib/auth';
 
 export default requireRole('admin')(async (req, res) => {
   if (req.method !== 'PATCH') return res.status(405).json({ error: 'Method not allowed' });
