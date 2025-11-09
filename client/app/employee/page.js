@@ -1,56 +1,100 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { getMyExams, getMyResults, getEmployeeDashboard, generateCertificate } from '@/lib/api';
+import { formatDateIST } from '@/lib/dateUtils';
 import Head from 'next/head';
 
 export default function EmployeeDashboard() {
   const router = useRouter();
   const [exams, setExams] = useState([]);
   const [results, setResults] = useState([]);
+  const [resultsTotal, setResultsTotal] = useState(0);
+  const [resultsLoading, setResultsLoading] = useState(false);
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [user, setUser] = useState(null);
   const [reexamReason, setReexamReason] = useState('');
+  const [resultsPage, setResultsPage] = useState(0);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [error, setError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const resultsPerPage = 5;
 
-  // Format date in IST timezone
-  const formatDateIST = (dateString) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleString('en-IN', {
-      timeZone: 'Asia/Kolkata',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
-  };
+
 
   useEffect(() => {
-    loadData();
+    const token = localStorage.getItem('token');
     const userData = JSON.parse(localStorage.getItem('user') || '{}');
-    setUser(userData);
-  }, []);
 
-  const loadData = async () => {
+    if (!token || userData.role !== 'employee') {
+      router.push('/');
+      return;
+    }
+
+    setIsAuthenticated(true);
+    setUser(userData);
+    loadData();
+  }, [router]);
+
+  useEffect(() => {
+    if (activeTab === 'results' && !resultsLoading && isAuthenticated) {
+      loadResults(0);
+    }
+  }, [activeTab, isAuthenticated]);
+
+  const loadData = useCallback(async () => {
     try {
-      const [examsData, resultsData, dashboardData] = await Promise.all([
-        getMyExams('pending'),
-        getMyResults(),
+      setError(null);
+      const [examsData, dashboardData] = await Promise.all([
+        getMyExams(),
         getEmployeeDashboard()
       ]);
-      setExams(examsData);
-      setResults(resultsData);
+      setExams(examsData || []);
       setDashboard(dashboardData);
+      setRetryCount(0);
+      setLastUpdated(new Date());
     } catch (error) {
       console.error('Failed to load data:', error);
+      setError('Failed to load dashboard data. Please try again.');
+      if (retryCount < 3) {
+        setTimeout(() => {
+          setRetryCount(prev => prev + 1);
+          loadData();
+        }, 2000);
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [retryCount]);
+
+  const loadResults = useCallback(async (page = 0) => {
+    setResultsLoading(true);
+    try {
+      const response = await fetch(`/api/employee/results?limit=${resultsPerPage}&offset=${page * resultsPerPage}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setResults(data.results || []);
+      setResultsTotal(data.total || 0);
+      setResultsPage(page);
+      setError(null);
+    } catch (error) {
+      console.error('Failed to load results:', error);
+      setError('Failed to load results. Please try again.');
+      setResults([]);
+      setResultsTotal(0);
+    } finally {
+      setResultsLoading(false);
+    }
+  }, []);
 
   const getExamStatus = (exam) => {
     const now = new Date();
@@ -73,7 +117,7 @@ export default function EmployeeDashboard() {
     return { text: 'Available', color: 'bg-blue-100 text-blue-800', disabled: false };
   };
 
-  if (loading) {
+  if (!isAuthenticated || loading) {
     return (
       <div className="flex justify-center items-center h-screen bg-gradient-to-br from-blue-50 to-purple-50">
         <div className="text-center">
@@ -98,22 +142,76 @@ export default function EmployeeDashboard() {
               <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 Employee Dashboard
               </h1>
-              <p className="text-gray-600 text-sm mt-1">Welcome back! Ready for your next exam?</p>
+              <p className="text-gray-600 text-sm mt-1">
+                Welcome back! Ready for your next exam?
+                {lastUpdated && (
+                  <span className="block text-xs text-gray-500 mt-1">
+                    Last updated: {lastUpdated.toLocaleTimeString()}
+                  </span>
+                )}
+              </p>
             </div>
-            <button
-              onClick={() => {
-                localStorage.clear();
-                window.location.href = '/';
-              }}
-              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
-            >
-              Logout
-            </button>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => {
+                  setLoading(true);
+                  loadData();
+                  if (activeTab === 'results') {
+                    loadResults(0);
+                  }
+                }}
+                disabled={loading}
+                className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition disabled:opacity-50 flex items-center gap-2"
+                title="Refresh data"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Refresh
+              </button>
+              <button
+                onClick={() => {
+                  localStorage.clear();
+                  window.location.href = '/';
+                }}
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Error Display */}
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-center">
+              <svg className="w-5 h-5 text-red-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="flex-1">
+                <p className="text-red-800 font-medium">Error</p>
+                <p className="text-red-700 text-sm">{error}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setError(null);
+                  if (activeTab === 'results') {
+                    loadResults(resultsPage);
+                  } else {
+                    loadData();
+                  }
+                }}
+                className="ml-4 px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* KPI Cards with Navigation */}
         {dashboard && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -203,7 +301,7 @@ export default function EmployeeDashboard() {
         {activeTab === 'dashboard' && (
           <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
             <h2 className="text-xl font-bold text-gray-800 mb-4">Available Exams</h2>
-              {exams.filter(e => !e.completed_at).length === 0 ? (
+              {exams.filter(e => !e.completed_at && !e.exams?.is_expired).length === 0 ? (
                 <div className="text-center py-12">
                   <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -212,7 +310,7 @@ export default function EmployeeDashboard() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {exams.filter(e => !e.completed_at && e.exams).sort((a, b) => new Date(b.exams.start_time) - new Date(a.exams.start_time)).slice(0, 4).map((exam) => {
+                  {exams.filter(e => !e.completed_at && e.exams && !e.exams.is_expired).sort((a, b) => new Date(b.exams.start_time) - new Date(a.exams.start_time)).slice(0, 4).map((exam) => {
                     const status = getExamStatus(exam);
                     return (
                       <div key={exam.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
@@ -254,7 +352,7 @@ export default function EmployeeDashboard() {
           <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
             <h2 className="text-xl font-bold text-gray-800 mb-4">All Assigned Exams</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {exams.filter(e => e.exams).sort((a, b) => new Date(b.exams.start_time) - new Date(a.exams.start_time)).map((exam) => {
+              {exams.filter(e => e.exams && !e.exams.is_expired).sort((a, b) => new Date(b.exams.start_time) - new Date(a.exams.start_time)).map((exam) => {
                 const status = getExamStatus(exam);
                 return (
                   <div key={exam.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
@@ -393,8 +491,19 @@ export default function EmployeeDashboard() {
         {/* Results Tab */}
         {activeTab === 'results' && (
           <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">My Results (Last 2 Exams)</h2>
-            {results.length === 0 ? (
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800">My Results</h2>
+              <div className="text-sm text-gray-600">
+                Showing {results.length} of {resultsTotal} results
+              </div>
+            </div>
+
+            {resultsLoading ? (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="mt-4 text-gray-600">Loading results...</p>
+              </div>
+            ) : results.length === 0 ? (
               <div className="text-center py-12">
                 <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -402,61 +511,67 @@ export default function EmployeeDashboard() {
                 <p className="text-gray-500">No results yet</p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {results.slice(0, 2).map((result) => (
-                  <div key={result.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-gray-800 text-lg">{result.exams?.title || 'Exam'}</h3>
-                        <p className="text-sm text-gray-500 mt-1">
-                          Submitted: {formatDateIST(result.submitted_at)}
-                        </p>
-                      </div>
-                      {result.rank && (
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-purple-600">#{result.rank}</div>
-                          <div className="text-xs text-gray-500">Rank</div>
+              <>
+                <div className="space-y-4">
+                  {results.map((result) => (
+                    <div key={result.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-800 text-lg">{result.exams?.title || 'Exam'}</h3>
+                          <p className="text-sm text-gray-500 mt-1">
+                            Submitted: {formatDateIST(result.submitted_at)}
+                          </p>
                         </div>
-                      )}
-                    </div>
-                    
-                    <div className="grid grid-cols-3 gap-3 mb-3">
-                      <div className="text-center p-2 bg-blue-50 rounded">
-                        <div className="text-xl font-bold text-blue-600">{result.score}</div>
-                        <div className="text-xs text-gray-600">Correct</div>
+                        {result.rank && (
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-purple-600">#{result.rank}</div>
+                            <div className="text-xs text-gray-500">Rank</div>
+                          </div>
+                        )}
                       </div>
-                      <div className="text-center p-2 bg-gray-50 rounded">
-                        <div className="text-xl font-bold text-gray-600">{result.total_questions}</div>
-                        <div className="text-xs text-gray-600">Total</div>
-                      </div>
-                      <div className="text-center p-2 bg-green-50 rounded">
-                        <div className="text-xl font-bold text-green-600">{result.percentage.toFixed(1)}%</div>
-                        <div className="text-xs text-gray-600">Score</div>
-                      </div>
-                    </div>
 
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <div className={`flex-1 text-center px-3 py-2 rounded text-sm font-medium ${
-                          result.percentage >= 50 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}>
-                          {result.percentage >= 50 ? '✓ Passed' : '✗ Failed'}
+                      <div className="grid grid-cols-3 gap-3 mb-3">
+                        <div className="text-center p-2 bg-blue-50 rounded">
+                          <div className="text-xl font-bold text-blue-600">{result.score}</div>
+                          <div className="text-xs text-gray-600">Correct</div>
                         </div>
-                        
+                        <div className="text-center p-2 bg-gray-50 rounded">
+                          <div className="text-xl font-bold text-gray-600">{result.total_questions}</div>
+                          <div className="text-xs text-gray-600">Total</div>
+                        </div>
+                        <div className="text-center p-2 bg-green-50 rounded">
+                          <div className="text-xl font-bold text-green-600">{result.percentage.toFixed(1)}%</div>
+                          <div className="text-xs text-gray-600">Score</div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className={`flex-1 text-center px-3 py-2 rounded text-sm font-medium ${
+                            result.percentage >= 50 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          }`}>
+                            {result.percentage >= 50 ? '✓ Passed' : '✗ Failed'}
+                          </div>
+
                         {result.percentage >= 50 && (
-                          result.certificate_number ? (
-                            <div className="px-4 py-2 bg-green-600 text-white text-sm rounded font-mono">
-                              📄 {result.certificate_number}
-                            </div>
+                          result.certificate_url ? (
+                            <a
+                              href={result.certificate_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-4 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition inline-flex items-center gap-2"
+                            >
+                              📥 Download Certificate
+                            </a>
                           ) : (
                             <button
                               onClick={async () => {
                                 try {
                                   const res = await generateCertificate(result.id);
-                                  alert(`Certificate: ${res.certificateNumber}`);
-                                  loadData();
+                                  alert(`Certificate generated successfully!`);
+                                  loadResults(resultsPage);
                                 } catch (err) {
-                                  alert(err.response?.data?.error || 'Failed to generate');
+                                  alert(err.response?.data?.error || 'Failed to generate certificate');
                                 }
                               }}
                               className="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition"
@@ -465,49 +580,73 @@ export default function EmployeeDashboard() {
                             </button>
                           )
                         )}
-                      </div>
-                      
-                      <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
-                        <p className="text-xs text-yellow-800 mb-2 font-medium">Request Re-exam</p>
-                        <input
-                          type="text"
-                          placeholder="Reason (e.g., Failed / Want to improve rank)"
-                          className="w-full text-xs px-2 py-1 border rounded mb-2"
-                          onChange={(e) => setReexamReason(e.target.value)}
-                        />
-                        {!result.reexam_requested ? (
-                          <button
-                            onClick={async () => {
-                              if (!reexamReason.trim()) {
-                                alert('Please enter reason');
-                                return;
-                              }
-                              try {
-                                const token = localStorage.getItem('token');
-                                await fetch('/api/employee/reexam-request', {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                                  body: JSON.stringify({ examId: result.exam_id, reason: reexamReason })
-                                });
-                                alert('Re-exam request submitted!');
-                                setReexamReason('');
-                                loadData();
-                              } catch (err) {
-                                alert('Failed to submit request');
-                              }
-                            }}
-                            className="w-full px-3 py-1 bg-yellow-600 text-white text-xs rounded hover:bg-yellow-700 transition"
-                          >
-                            Submit Request
-                          </button>
-                        ) : (
-                          <p className="text-xs text-yellow-700 text-center">Request already submitted</p>
-                        )}
+                        </div>
+
+                        <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
+                          <p className="text-xs text-yellow-800 mb-2 font-medium">Request Re-exam</p>
+                          <input
+                            type="text"
+                            placeholder="Reason (e.g., Failed / Want to improve rank)"
+                            className="w-full text-xs px-2 py-1 border rounded mb-2"
+                            onChange={(e) => setReexamReason(e.target.value)}
+                          />
+                          {!result.reexam_requested ? (
+                            <button
+                              onClick={async () => {
+                                if (!reexamReason.trim()) {
+                                  alert('Please enter reason');
+                                  return;
+                                }
+                                try {
+                                  const token = localStorage.getItem('token');
+                                  await fetch('/api/employee/reexam-request', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                                    body: JSON.stringify({ examId: result.exam_id, reason: reexamReason })
+                                  });
+                                  alert('Re-exam request submitted!');
+                                  setReexamReason('');
+                                  loadResults(resultsPage);
+                                } catch (err) {
+                                  alert('Failed to submit request');
+                                }
+                              }}
+                              className="w-full px-3 py-1 bg-yellow-600 text-white text-xs rounded hover:bg-yellow-700 transition"
+                            >
+                              Submit Request
+                            </button>
+                          ) : (
+                            <p className="text-xs text-yellow-700 text-center">Request already submitted</p>
+                          )}
+                        </div>
                       </div>
                     </div>
+                  ))}
+                </div>
+
+                {/* Pagination */}
+                {resultsTotal > resultsPerPage && (
+                  <div className="flex justify-center items-center mt-6 space-x-2">
+                    <button
+                      onClick={() => loadResults(resultsPage - 1)}
+                      disabled={resultsPage === 0}
+                      className="px-3 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    <span className="text-sm text-gray-600">
+                      Page {resultsPage + 1} of {Math.ceil(resultsTotal / resultsPerPage)}
+                    </span>
+                    <button
+                      onClick={() => loadResults(resultsPage + 1)}
+                      disabled={(resultsPage + 1) * resultsPerPage >= resultsTotal}
+                      className="px-3 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             )}
           </div>
         )}
