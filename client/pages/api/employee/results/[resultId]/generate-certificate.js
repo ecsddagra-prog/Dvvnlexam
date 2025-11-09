@@ -136,7 +136,7 @@ export default requireAuth(async function handler(req, res) {
 
     // Create authenticated Supabase client for downloads
     const token = req.headers.authorization?.replace('Bearer ', '');
-    const supabaseAuth = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, {
+    const supabaseAuth = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: `Bearer ${token}` } }
     });
 

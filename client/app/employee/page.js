@@ -21,6 +21,8 @@ export default function EmployeeDashboard() {
   const [error, setError] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [showReexamModal, setShowReexamModal] = useState(false);
+  const [selectedResultForReexam, setSelectedResultForReexam] = useState(null);
   const resultsPerPage = 5;
 
 
@@ -582,43 +584,21 @@ export default function EmployeeDashboard() {
                         )}
                         </div>
 
-                        <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
-                          <p className="text-xs text-yellow-800 mb-2 font-medium">Request Re-exam</p>
-                          <input
-                            type="text"
-                            placeholder="Reason (e.g., Failed / Want to improve rank)"
-                            className="w-full text-xs px-2 py-1 border rounded mb-2"
-                            onChange={(e) => setReexamReason(e.target.value)}
-                          />
-                          {!result.reexam_requested ? (
-                            <button
-                              onClick={async () => {
-                                if (!reexamReason.trim()) {
-                                  alert('Please enter reason');
-                                  return;
-                                }
-                                try {
-                                  const token = localStorage.getItem('token');
-                                  await fetch('/api/employee/reexam-request', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                                    body: JSON.stringify({ examId: result.exam_id, reason: reexamReason })
-                                  });
-                                  alert('Re-exam request submitted!');
-                                  setReexamReason('');
-                                  loadResults(resultsPage);
-                                } catch (err) {
-                                  alert('Failed to submit request');
-                                }
-                              }}
-                              className="w-full px-3 py-1 bg-yellow-600 text-white text-xs rounded hover:bg-yellow-700 transition"
-                            >
-                              Submit Request
-                            </button>
-                          ) : (
-                            <p className="text-xs text-yellow-700 text-center">Request already submitted</p>
-                          )}
-                        </div>
+                        {!result.reexam_requested ? (
+                          <button
+                            onClick={() => {
+                              setSelectedResultForReexam(result);
+                              setShowReexamModal(true);
+                            }}
+                            className="px-4 py-2 bg-yellow-600 text-white text-sm rounded hover:bg-yellow-700 transition"
+                          >
+                            Request Re-exam
+                          </button>
+                        ) : (
+                          <span className="px-4 py-2 bg-gray-100 text-gray-600 text-sm rounded">
+                            Re-exam Requested
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -648,6 +628,105 @@ export default function EmployeeDashboard() {
                 )}
               </>
             )}
+          </div>
+        )}
+
+        {/* Re-exam Request Modal */}
+        {showReexamModal && selectedResultForReexam && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-md w-full">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold text-gray-800">Request Re-exam</h2>
+                  <button
+                    onClick={() => {
+                      setShowReexamModal(false);
+                      setSelectedResultForReexam(null);
+                      setReexamReason('');
+                    }}
+                    className="text-gray-500 hover:text-gray-700 text-2xl"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="mb-4">
+                  <div className="bg-gray-50 p-3 rounded-lg mb-4">
+                    <h3 className="font-semibold text-gray-800">{selectedResultForReexam.exams?.title || 'Exam'}</h3>
+                    <p className="text-sm text-gray-600">
+                      Score: {selectedResultForReexam.percentage.toFixed(1)}% ({selectedResultForReexam.score}/{selectedResultForReexam.total_questions})
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Submitted: {formatDateIST(selectedResultForReexam.submitted_at)}
+                    </p>
+                  </div>
+
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Reason for Re-exam Request *
+                    </label>
+                    <textarea
+                      value={reexamReason}
+                      onChange={(e) => setReexamReason(e.target.value)}
+                      placeholder="Please explain why you want to retake this exam (e.g., I want to improve my score, technical issues during exam, etc.)"
+                      className="w-full p-3 border border-gray-300 rounded-lg h-24 resize-none"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={async () => {
+                        if (!reexamReason.trim()) {
+                          alert('Please enter a reason for the re-exam request');
+                          return;
+                        }
+
+                        try {
+                          const token = localStorage.getItem('token');
+                          const response = await fetch('/api/employee/reexam-request', {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'Authorization': `Bearer ${token}`
+                            },
+                            body: JSON.stringify({
+                              examId: selectedResultForReexam.exam_id,
+                              reason: reexamReason.trim()
+                            })
+                          });
+
+                          if (!response.ok) {
+                            throw new Error('Failed to submit request');
+                          }
+
+                          alert('Re-exam request submitted successfully!');
+                          setShowReexamModal(false);
+                          setSelectedResultForReexam(null);
+                          setReexamReason('');
+                          loadResults(resultsPage);
+                        } catch (err) {
+                          alert('Failed to submit re-exam request. Please try again.');
+                        }
+                      }}
+                      className="flex-1 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition"
+                    >
+                      Submit Request
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowReexamModal(false);
+                        setSelectedResultForReexam(null);
+                        setReexamReason('');
+                      }}
+                      className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>

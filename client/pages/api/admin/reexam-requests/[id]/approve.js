@@ -1,13 +1,12 @@
-import { requireAuth } from '@/lib/auth';
+import { requireRole } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
-export default async function handler(req, res) {
+export default requireRole('admin')(async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const decoded = await requireAuth(req, res, 'admin');
     const { id } = req.query;
 
     const { error } = await supabase
@@ -15,7 +14,7 @@ export default async function handler(req, res) {
       .update({
         status: 'approved',
         reviewed_at: new Date().toISOString(),
-        reviewed_by: decoded.id
+        reviewed_by: req.user.id
       })
       .eq('id', id);
 
@@ -26,4 +25,4 @@ export default async function handler(req, res) {
     console.error('Approve error:', error);
     res.status(500).json({ error: error.message });
   }
-}
+});

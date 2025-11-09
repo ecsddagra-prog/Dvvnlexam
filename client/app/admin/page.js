@@ -71,16 +71,18 @@ export default function AdminDashboard() {
 
 
   const menuItems = [
-    { id: 'upload-employees', title: 'Upload Employees', icon: '👥', description: 'Bulk upload employees via Excel/CSV' },
-    { id: 'upload-questions', title: 'Upload Questions', icon: '❓', description: 'Bulk upload questions via Excel/CSV' },
     { id: 'create-exam', title: 'Create Exam', icon: '📝', description: 'Create new examination' },
-    { id: 'manage-exams', title: 'Manage Exams', icon: '✏️', description: 'Edit exam details before start time' },
     { id: 'assign-questions', title: 'Assign Questions to Exam', icon: '🔗', description: 'Link questions to exams' },
     { id: 'assign-exam', title: 'Assign Exam to Employees', icon: '📋', description: 'Assign exams to employees' },
+    { id: 'exam-results', title: 'View Results', icon: '📊', description: 'View examination results' },
+    { id: 'reexam-requests', title: 'Reexam Requests', icon: '🔄', description: 'Manage reexam requests' },
+    { id: 'upload-employees', title: 'Upload Employees', icon: '👥', description: 'Bulk upload employees via Excel/CSV' },
     { id: 'employee-management', title: 'Employee Management', icon: '⚙️', description: 'Manage employee accounts' },
-    { id: 'exam-results', title: 'Exam Results', icon: '📊', description: 'View examination results' },
+    { id: 'certificate-settings', title: 'Certificate Settings', icon: '🏆', description: 'Customize certificate appearance and content' },
+    { id: 'admin-profile', title: 'Admin Profile', icon: '👤', description: 'View and manage admin profile' },
     { id: 'pending-questions', title: 'Pending Questions', icon: '⏳', description: 'Review pending questions' },
-    { id: 'certificate-settings', title: 'Certificate Settings', icon: '🏆', description: 'Customize certificate appearance and content' }
+    { id: 'upload-questions', title: 'Upload Questions', icon: '❓', description: 'Bulk upload questions via Excel/CSV' },
+    { id: 'manage-exams', title: 'Manage Exams', icon: '✏️', description: 'Edit exam details before start time' }
   ];
 
   if (!isAuthenticated) {
@@ -1125,16 +1127,23 @@ export default function AdminDashboard() {
       <div className="bg-white rounded-xl shadow-lg p-6">
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-2">Select Exam</label>
-          <select
-            value={selectedExam}
-            onChange={(e) => handleExamChange(e.target.value)}
-            className="w-full p-3 border rounded-lg"
-          >
-            <option value="">Choose an exam</option>
-            {exams.map((exam) => (
-              <option key={exam.id} value={exam.id}>{exam.title}</option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              value={selectedExam}
+              onChange={(e) => handleExamChange(e.target.value)}
+              className="w-full p-4 pr-12 border-2 border-gray-200 rounded-xl bg-gradient-to-r from-white to-gray-50 text-gray-700 font-medium shadow-sm hover:border-blue-300 hover:shadow-md focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all duration-200 appearance-none cursor-pointer"
+            >
+              <option value="" className="text-gray-500">Choose an exam</option>
+              {exams.map((exam) => (
+                <option key={exam.id} value={exam.id} className="text-gray-700 bg-white hover:bg-blue-50">{exam.title}</option>
+              ))}
+            </select>
+            <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
+              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
         </div>
         {loading ? (
           <p className="text-center text-gray-500">Loading results...</p>
@@ -1538,6 +1547,231 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
+        )}
+      </div>
+    );
+  };
+
+  const AdminProfilePage = ({ setFeedback }) => {
+    const [adminData, setAdminData] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+      loadAdminProfile();
+    }, []);
+
+    const loadAdminProfile = () => {
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      setAdminData(userData);
+      setLoading(false);
+    };
+
+    if (loading) {
+      return (
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          <p className="text-center text-gray-500">Loading admin profile...</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Admin Profile</h2>
+          <p className="text-gray-600">View your admin account information</p>
+        </div>
+
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                <div className="p-3 bg-gray-50 rounded-lg text-gray-800 font-medium">
+                  {adminData?.name || 'N/A'}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                <div className="p-3 bg-gray-50 rounded-lg text-gray-800">
+                  {adminData?.email || 'N/A'}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Employee ID</label>
+                <div className="p-3 bg-gray-50 rounded-lg text-gray-800">
+                  {adminData?.employee_id || 'N/A'}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
+                <div className="p-3 bg-green-50 rounded-lg text-green-800 font-medium">
+                  {adminData?.role?.charAt(0).toUpperCase() + adminData?.role?.slice(1) || 'Admin'}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
+                <div className="p-3 bg-gray-50 rounded-lg text-gray-800">
+                  {adminData?.department || 'N/A'}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Mobile</label>
+                <div className="p-3 bg-gray-50 rounded-lg text-gray-800">
+                  {adminData?.mobile || 'N/A'}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t pt-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Account Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center p-4 bg-blue-50 rounded-lg">
+                <div className="text-2xl font-bold text-blue-600 mb-1">
+                  {adminData?.id ? 'Active' : 'N/A'}
+                </div>
+                <div className="text-sm text-blue-700">Account Status</div>
+              </div>
+
+              <div className="text-center p-4 bg-green-50 rounded-lg">
+                <div className="text-2xl font-bold text-green-600 mb-1">
+                  Admin
+                </div>
+                <div className="text-sm text-green-700">Access Level</div>
+              </div>
+
+              <div className="text-center p-4 bg-purple-50 rounded-lg">
+                <div className="text-2xl font-bold text-purple-600 mb-1">
+                  Full
+                </div>
+                <div className="text-sm text-purple-700">Permissions</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t pt-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">System Information</h3>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="font-medium text-gray-700">Last Login:</span>
+                  <span className="ml-2 text-gray-600">Current Session</span>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700">Session Started:</span>
+                  <span className="ml-2 text-gray-600">{new Date().toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const ReexamRequestsPage = ({ setFeedback }) => {
+    const [requests, setRequests] = useState([]);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+      loadRequests();
+    }, []);
+
+    const loadRequests = async () => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/admin/reexam-requests', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        setRequests(data);
+      } catch (err) {
+        console.error('Failed to load requests:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const handleApprove = async (id) => {
+      try {
+        const token = localStorage.getItem('token');
+        await fetch(`/api/admin/reexam-requests/${id}/approve`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        setFeedback({ success: 'Request approved!' });
+        loadRequests();
+      } catch (err) {
+        setFeedback({ error: 'Failed to approve request' });
+      }
+    };
+
+    const handleReject = async (id) => {
+      try {
+        const token = localStorage.getItem('token');
+        await fetch(`/api/admin/reexam-requests/${id}/reject`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        setFeedback({ success: 'Request rejected!' });
+        loadRequests();
+      } catch (err) {
+        setFeedback({ error: 'Failed to reject request' });
+      }
+    };
+
+    return (
+      <div className="bg-white rounded-xl shadow-lg p-6">
+        {loading ? (
+          <p className="text-center text-gray-500">Loading...</p>
+        ) : requests.length > 0 ? (
+          <div className="space-y-4">
+            {requests.map((req) => (
+              <div key={req.id} className="border rounded-lg p-4 hover:shadow-md transition">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <p className="font-semibold">{req.employee_name}</p>
+                    <p className="text-sm text-gray-600">Exam: {req.exam_title}</p>
+                    <p className="text-sm text-gray-500">Reason: {req.reason}</p>
+                    <p className="text-xs text-gray-400">Requested: {new Date(req.requested_at).toLocaleString()}</p>
+                  </div>
+                  <span className={`px-2 py-1 rounded text-xs ${
+                    req.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                    req.status === 'approved' ? 'bg-green-100 text-green-700' :
+                    'bg-red-100 text-red-700'
+                  }`}>
+                    {req.status}
+                  </span>
+                </div>
+                {req.status === 'pending' && (
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      onClick={() => handleApprove(req.id)}
+                      className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => handleReject(req.id)}
+                      className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-center text-gray-500">No reexam requests</p>
         )}
       </div>
     );
@@ -2269,10 +2503,14 @@ export default function AdminDashboard() {
         return <EmployeeManagementPage setFeedback={setFeedback} />;
       case 'exam-results':
         return <ExamResultsPage setFeedback={setFeedback} />;
+      case 'reexam-requests':
+        return <ReexamRequestsPage setFeedback={setFeedback} />;
       case 'pending-questions':
         return <PendingQuestionsPage setFeedback={setFeedback} />;
       case 'certificate-settings':
         return <CertificateSettingsPage setFeedback={setFeedback} />;
+      case 'admin-profile':
+        return <AdminProfilePage setFeedback={setFeedback} />;
       default:
         return null;
     }

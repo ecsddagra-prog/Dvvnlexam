@@ -1,13 +1,12 @@
-import { requireAuth } from '@/lib/auth';
+import { requireRole } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
-export default async function handler(req, res) {
+export default requireRole('employee')(async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const decoded = await requireAuth(req, res, 'employee');
     const { examId, reason } = req.body;
 
     if (!examId || !reason) {
@@ -18,7 +17,7 @@ export default async function handler(req, res) {
     const { data: existingRequest } = await supabase
       .from('reexam_requests')
       .select('id, status')
-      .eq('employee_id', decoded.id)
+      .eq('employee_id', req.user.id)
       .eq('exam_id', examId)
       .single();
 
@@ -34,7 +33,7 @@ export default async function handler(req, res) {
     const { error } = await supabase
       .from('reexam_requests')
       .insert({
-        employee_id: decoded.id,
+        employee_id: req.user.id,
         exam_id: examId,
         reason: reason.trim(),
         status: 'pending'
@@ -50,4 +49,4 @@ export default async function handler(req, res) {
     console.error('Re-exam request error:', error);
     res.status(500).json({ error: error.message });
   }
-}
+});
