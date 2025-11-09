@@ -23,6 +23,15 @@ export default function EmployeeDashboard() {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [showReexamModal, setShowReexamModal] = useState(false);
   const [selectedResultForReexam, setSelectedResultForReexam] = useState(null);
+  const [showResponsesModal, setShowResponsesModal] = useState(false);
+  const [responsesData, setResponsesData] = useState(null);
+  const [responsesLoading, setResponsesLoading] = useState(false);
+  const [responseFilter, setResponseFilter] = useState('all'); // 'all', 'correct', 'wrong'
+  const [showChallengeModal, setShowChallengeModal] = useState(false);
+  const [selectedQuestionForChallenge, setSelectedQuestionForChallenge] = useState(null);
+  const [challengeReason, setChallengeReason] = useState('');
+  const [suggestedCorrectAnswer, setSuggestedCorrectAnswer] = useState('');
+  const [challengeSubmitting, setChallengeSubmitting] = useState(false);
   const resultsPerPage = 5;
 
 
@@ -100,13 +109,13 @@ export default function EmployeeDashboard() {
 
   const getExamStatus = (exam) => {
     const now = new Date();
-    
+
     // Check if exam is already submitted
     const isSubmitted = results.some(r => r.exam_id === exam.exam_id);
     if (isSubmitted) {
       return { text: 'Submitted', color: 'bg-green-100 text-green-800', disabled: true };
     }
-    
+
     if (exam.exams?.start_time && new Date(exam.exams.start_time) > now) {
       return { text: 'Upcoming', color: 'bg-yellow-100 text-yellow-800', disabled: true };
     }
@@ -117,6 +126,31 @@ export default function EmployeeDashboard() {
       return { text: 'Completed', color: 'bg-green-100 text-green-800', disabled: true };
     }
     return { text: 'Available', color: 'bg-blue-100 text-blue-800', disabled: false };
+  };
+
+  const showResponses = async (resultId, filter = 'all') => {
+    setResponsesLoading(true);
+    setResponseFilter(filter);
+    setShowResponsesModal(true);
+
+    try {
+      const response = await fetch(`/api/employee/results/${resultId}/responses`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setResponsesData(data);
+    } catch (error) {
+      console.error('Failed to load responses:', error);
+      alert('Failed to load responses. Please try again.');
+      setShowResponsesModal(false);
+    } finally {
+      setResponsesLoading(false);
+    }
   };
 
   if (!isAuthenticated || loading) {
@@ -532,17 +566,27 @@ export default function EmployeeDashboard() {
                         )}
                       </div>
 
-                      <div className="grid grid-cols-3 gap-3 mb-3">
-                        <div className="text-center p-2 bg-blue-50 rounded">
-                          <div className="text-xl font-bold text-blue-600">{result.score}</div>
+                      <div className="grid grid-cols-4 gap-3 mb-3">
+                        <button
+                          onClick={() => showResponses(result.id, 'correct')}
+                          className="text-center p-2 bg-green-50 rounded hover:bg-green-100 transition cursor-pointer"
+                        >
+                          <div className="text-xl font-bold text-green-600">{result.score}</div>
                           <div className="text-xs text-gray-600">Correct</div>
-                        </div>
+                        </button>
+                        <button
+                          onClick={() => showResponses(result.id, 'wrong')}
+                          className="text-center p-2 bg-red-50 rounded hover:bg-red-100 transition cursor-pointer"
+                        >
+                          <div className="text-xl font-bold text-red-600">{result.total_questions - result.score}</div>
+                          <div className="text-xs text-gray-600">Wrong</div>
+                        </button>
                         <div className="text-center p-2 bg-gray-50 rounded">
                           <div className="text-xl font-bold text-gray-600">{result.total_questions}</div>
                           <div className="text-xs text-gray-600">Total</div>
                         </div>
-                        <div className="text-center p-2 bg-green-50 rounded">
-                          <div className="text-xl font-bold text-green-600">{result.percentage.toFixed(1)}%</div>
+                        <div className="text-center p-2 bg-blue-50 rounded">
+                          <div className="text-xl font-bold text-blue-600">{result.percentage.toFixed(1)}%</div>
                           <div className="text-xs text-gray-600">Score</div>
                         </div>
                       </div>
@@ -718,6 +762,272 @@ export default function EmployeeDashboard() {
                         setShowReexamModal(false);
                         setSelectedResultForReexam(null);
                         setReexamReason('');
+                      }}
+                      className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Responses Modal */}
+        {showResponsesModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold text-gray-800">
+                    {responsesData?.exam_title || 'Exam'} - {responseFilter === 'correct' ? 'Correct Answers' : responseFilter === 'wrong' ? 'Wrong Answers' : 'All Responses'}
+                  </h2>
+                  <button
+                    onClick={() => {
+                      setShowResponsesModal(false);
+                      setResponsesData(null);
+                      setResponseFilter('all');
+                    }}
+                    className="text-gray-500 hover:text-gray-700 text-2xl"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                {responsesLoading ? (
+                  <div className="text-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                    <p className="mt-4 text-gray-600">Loading responses...</p>
+                  </div>
+                ) : responsesData ? (
+                  <>
+                    <div className="mb-4 flex gap-2">
+                      <button
+                        onClick={() => setResponseFilter('all')}
+                        className={`px-3 py-1 text-sm rounded ${responseFilter === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+                      >
+                        All ({responsesData.summary.total_questions})
+                      </button>
+                      <button
+                        onClick={() => setResponseFilter('correct')}
+                        className={`px-3 py-1 text-sm rounded ${responseFilter === 'correct' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+                      >
+                        Correct ({responsesData.summary.correct_answers})
+                      </button>
+                      <button
+                        onClick={() => setResponseFilter('wrong')}
+                        className={`px-3 py-1 text-sm rounded ${responseFilter === 'wrong' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+                      >
+                        Wrong ({responsesData.summary.wrong_answers})
+                      </button>
+                    </div>
+
+                    <div className="space-y-4 max-h-96 overflow-y-auto">
+                      {responsesData.responses
+                        .filter(response => {
+                          if (responseFilter === 'correct') return response.is_correct;
+                          if (responseFilter === 'wrong') return !response.is_correct;
+                          return true;
+                        })
+                        .map((response, index) => (
+                          <div key={response.id} className={`border rounded-lg p-4 ${response.is_correct ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-semibold text-gray-800">Question {index + 1}</h3>
+                                {response.challenge && (
+                                  <span className={`text-xs px-2 py-1 rounded ${
+                                    response.challenge.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                    response.challenge.status === 'reviewed' ? 'bg-blue-100 text-blue-800' :
+                                    response.challenge.status === 'resolved' ? 'bg-green-100 text-green-800' :
+                                    'bg-gray-100 text-gray-800'
+                                  }`}>
+                                    {response.challenge.status === 'pending' ? '⏳ Challenged' :
+                                     response.challenge.status === 'reviewed' ? '👁️ Reviewed' :
+                                     response.challenge.status === 'resolved' ? '✅ Resolved' :
+                                     'Challenged'}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className={`text-xs px-2 py-1 rounded ${response.is_correct ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                  {response.is_correct ? '✓ Correct' : '✗ Wrong'}
+                                </span>
+                                {!response.challenge && (
+                                  <button
+                                    onClick={() => {
+                                      setSelectedQuestionForChallenge({
+                                        id: response.id,
+                                        question: response.question,
+                                        examResultId: responsesData.exam_result_id || responsesData.responses[0]?.exam_result_id
+                                      });
+                                      setShowChallengeModal(true);
+                                    }}
+                                    className="text-xs px-2 py-1 bg-orange-500 text-white rounded hover:bg-orange-600 transition"
+                                    title="Challenge this question"
+                                  >
+                                    🚩 Flag
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            <p className="text-gray-700 mb-3">{response.question}</p>
+
+                            <div className="space-y-2">
+                              <div>
+                                <p className="text-sm font-medium text-gray-600">Options:</p>
+                                <div className="ml-4 space-y-1">
+                                  {Object.entries(response.options).map(([key, option]) => (
+                                    <div key={key} className={`text-sm p-2 rounded ${
+                                      key === response.correct_answer ? 'bg-green-100 border border-green-300' :
+                                      key === response.user_answer && !response.is_correct ? 'bg-red-100 border border-red-300' :
+                                      'bg-gray-50'
+                                    }`}>
+                                      <span className="font-medium">{key}.</span> {option}
+                                      {key === response.correct_answer && (
+                                        <span className="ml-2 text-green-600 font-bold">(Correct Answer)</span>
+                                      )}
+                                      {key === response.user_answer && key !== response.correct_answer && (
+                                        <span className="ml-2 text-red-600 font-bold">(Your Answer)</span>
+                                      )}
+                                      {key === response.user_answer && key === response.correct_answer && (
+                                        <span className="ml-2 text-green-600 font-bold">(Your Answer)</span>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-12">
+                    <p className="text-gray-500">No responses data available</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Challenge Modal */}
+        {showChallengeModal && selectedQuestionForChallenge && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-md w-full">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold text-gray-800">Challenge Question</h2>
+                  <button
+                    onClick={() => {
+                      setShowChallengeModal(false);
+                      setSelectedQuestionForChallenge(null);
+                      setChallengeReason('');
+                      setSuggestedCorrectAnswer('');
+                    }}
+                    className="text-gray-500 hover:text-gray-700 text-2xl"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="mb-4">
+                  <div className="bg-gray-50 p-3 rounded-lg mb-4">
+                    <p className="text-sm text-gray-600 mb-2">Question:</p>
+                    <p className="font-medium text-gray-800">{selectedQuestionForChallenge.question}</p>
+                  </div>
+
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Reason for Challenge *
+                    </label>
+                    <textarea
+                      value={challengeReason}
+                      onChange={(e) => setChallengeReason(e.target.value)}
+                      placeholder="Please explain why you are challenging this question (e.g., incorrect answer, ambiguous wording, technical issue, etc.)"
+                      className="w-full p-3 border border-gray-300 rounded-lg h-24 resize-none"
+                      required
+                    />
+                  </div>
+
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Suggested Correct Answer (Optional)
+                    </label>
+                    <select
+                      value={suggestedCorrectAnswer}
+                      onChange={(e) => setSuggestedCorrectAnswer(e.target.value)}
+                      className="w-full p-3 border border-gray-300 rounded-lg"
+                    >
+                      <option value="">Select if you know the correct answer</option>
+                      <option value="A">A</option>
+                      <option value="B">B</option>
+                      <option value="C">C</option>
+                      <option value="D">D</option>
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">Help admins by suggesting what you think is the correct answer</p>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={async () => {
+                        if (!challengeReason.trim()) {
+                          alert('Please enter a reason for the challenge');
+                          return;
+                        }
+
+                        setChallengeSubmitting(true);
+                        try {
+                          const token = localStorage.getItem('token');
+                          const requestData = {
+                            questionId: selectedQuestionForChallenge.id,
+                            examResultId: selectedQuestionForChallenge.examResultId,
+                            challengeReason: challengeReason.trim(),
+                            suggestedCorrectAnswer: suggestedCorrectAnswer || null
+                          };
+                          console.log('Sending challenge request:', requestData);
+                          const response = await fetch('/api/employee/question-challenges', {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'Authorization': `Bearer ${token}`
+                            },
+                            body: JSON.stringify(requestData)
+                          });
+
+                          if (!response.ok) {
+                            const errorData = await response.json();
+                            console.error('Challenge submission error:', errorData);
+                            throw new Error(errorData.error || 'Failed to submit challenge');
+                          }
+
+                          alert('Question challenge submitted successfully! An admin will review it.');
+                          setShowChallengeModal(false);
+                          setSelectedQuestionForChallenge(null);
+                          setChallengeReason('');
+                          // Refresh the responses data to show the challenge status
+                          if (responsesData) {
+                            showResponses(responsesData.exam_result_id || responsesData.responses[0]?.exam_result_id, responseFilter);
+                          }
+                        } catch (err) {
+                          alert('Failed to submit challenge. Please try again.');
+                        } finally {
+                          setChallengeSubmitting(false);
+                        }
+                      }}
+                      disabled={challengeSubmitting}
+                      className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition disabled:opacity-50"
+                    >
+                      {challengeSubmitting ? 'Submitting...' : 'Submit Challenge'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowChallengeModal(false);
+                        setSelectedQuestionForChallenge(null);
+                        setChallengeReason('');
+                        setSuggestedCorrectAnswer('');
                       }}
                       className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition"
                     >

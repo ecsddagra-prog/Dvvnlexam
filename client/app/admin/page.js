@@ -76,6 +76,7 @@ export default function AdminDashboard() {
     { id: 'assign-exam', title: 'Assign Exam to Employees', icon: '📋', description: 'Assign exams to employees' },
     { id: 'exam-results', title: 'View Results', icon: '📊', description: 'View examination results' },
     { id: 'reexam-requests', title: 'Reexam Requests', icon: '🔄', description: 'Manage reexam requests' },
+    { id: 'question-challenges', title: 'Question Challenges', icon: '🚩', description: 'Review employee question challenges' },
     { id: 'upload-employees', title: 'Upload Employees', icon: '👥', description: 'Bulk upload employees via Excel/CSV' },
     { id: 'employee-management', title: 'Employee Management', icon: '⚙️', description: 'Manage employee accounts' },
     { id: 'certificate-settings', title: 'Certificate Settings', icon: '🏆', description: 'Customize certificate appearance and content' },
@@ -2485,6 +2486,321 @@ export default function AdminDashboard() {
     );
   };
 
+  const QuestionChallengesPage = ({ setFeedback }) => {
+    const [challenges, setChallenges] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [selectedStatus, setSelectedStatus] = useState('all');
+    const [currentPage, setCurrentPage] = useState(0);
+    const [total, setTotal] = useState(0);
+  const [selectedChallenge, setSelectedChallenge] = useState(null);
+    const [adminResponse, setAdminResponse] = useState('');
+    const [updating, setUpdating] = useState(false);
+    const [updateQuestionAnswer, setUpdateQuestionAnswer] = useState(false);
+
+    useEffect(() => {
+      loadChallenges();
+    }, [selectedStatus, currentPage]);
+
+    const loadChallenges = async () => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`/api/admin/question-challenges?status=${selectedStatus}&page=${currentPage}&limit=10`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        setChallenges(data.challenges || []);
+        setTotal(data.total || 0);
+      } catch (err) {
+        console.error('Failed to load challenges:', err);
+        setFeedback({ error: 'Failed to load question challenges.' });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const handleUpdateChallenge = async (challengeId, status, response = '') => {
+      setUpdating(true);
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/admin/question-challenges', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            challengeId,
+            status,
+            adminResponse: response,
+            updateQuestionAnswer
+          })
+        });
+
+        if (!res.ok) throw new Error('Failed to update challenge');
+
+        setFeedback({ success: 'Challenge updated successfully!' });
+        setSelectedChallenge(null);
+        setAdminResponse('');
+        setUpdateQuestionAnswer(false);
+        loadChallenges();
+      } catch (err) {
+        setFeedback({ error: 'Failed to update challenge.' });
+      } finally {
+        setUpdating(false);
+      }
+    };
+
+    const getStatusColor = (status) => {
+      switch (status) {
+        case 'pending': return 'bg-yellow-100 text-yellow-800';
+        case 'reviewed': return 'bg-blue-100 text-blue-800';
+        case 'resolved': return 'bg-green-100 text-green-800';
+        default: return 'bg-gray-100 text-gray-800';
+      }
+    };
+
+    return (
+      <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className="mb-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Question Challenges</h2>
+          <p className="text-sm text-gray-600">Review and respond to employee question challenges</p>
+        </div>
+
+        {/* Filters */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Status</label>
+          <select
+            value={selectedStatus}
+            onChange={(e) => {
+              setSelectedStatus(e.target.value);
+              setCurrentPage(0);
+            }}
+            className="w-full md:w-48 p-3 border rounded-lg"
+          >
+            <option value="all">All Challenges</option>
+            <option value="pending">Pending</option>
+            <option value="reviewed">Reviewed</option>
+            <option value="resolved">Resolved</option>
+          </select>
+        </div>
+
+        {loading ? (
+          <p className="text-center text-gray-500">Loading challenges...</p>
+        ) : challenges.length === 0 ? (
+          <p className="text-center text-gray-500">No challenges found.</p>
+        ) : (
+          <>
+            <div className="space-y-4">
+              {challenges.map((challenge) => (
+                <div key={challenge.id} className="border rounded-lg p-4 hover:shadow-md transition">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="font-semibold text-gray-800">Question Challenge</h3>
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(challenge.status)}`}>
+                          {challenge.status.charAt(0).toUpperCase() + challenge.status.slice(1)}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                        <div>
+                          <p className="text-sm text-gray-600">Employee: <span className="font-medium">{challenge.users?.name}</span></p>
+                          <p className="text-sm text-gray-600">Exam: <span className="font-medium">{challenge.exam_results?.exams?.title}</span></p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Submitted: <span className="font-medium">{new Date(challenge.created_at).toLocaleString()}</span></p>
+                          {challenge.reviewed_at && (
+                            <p className="text-sm text-gray-600">Reviewed: <span className="font-medium">{new Date(challenge.reviewed_at).toLocaleString()}</span></p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mb-3">
+                        <p className="text-sm font-medium text-gray-700 mb-1">Challenge Reason:</p>
+                        <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">{challenge.challenge_reason}</p>
+                      </div>
+
+                      {challenge.suggested_correct_answer && (
+                        <div className="mb-3">
+                          <p className="text-sm font-medium text-gray-700 mb-1">Employee's Suggested Answer:</p>
+                          <p className="text-sm font-bold text-blue-600 bg-blue-50 p-2 rounded inline-block">
+                            {challenge.suggested_correct_answer}
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="mb-3">
+                        <p className="text-sm font-medium text-gray-700 mb-1">Question:</p>
+                        <p className="text-sm text-gray-800 bg-gray-50 p-2 rounded">{challenge.questions?.question}</p>
+                      </div>
+
+                      <div className="mb-3">
+                        <p className="text-sm font-medium text-gray-700 mb-1">Current Correct Answer:</p>
+                        <p className="text-sm font-bold text-green-600 bg-green-50 p-2 rounded inline-block">
+                          {challenge.questions?.correct_answer}
+                        </p>
+                      </div>
+
+                      {challenge.admin_response && (
+                        <div className="mb-3">
+                          <p className="text-sm font-medium text-gray-700 mb-1">Admin Response:</p>
+                          <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">{challenge.admin_response}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {challenge.status === 'pending' && (
+                    <div className="flex gap-2 pt-3 border-t">
+                      <button
+                        onClick={() => setSelectedChallenge(challenge)}
+                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                      >
+                        Review & Respond
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {total > 10 && (
+              <div className="flex justify-center items-center mt-6 space-x-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+                  disabled={currentPage === 0}
+                  className="px-3 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50"
+                >
+                  Previous
+                </button>
+                <span className="text-sm text-gray-600">
+                  Page {currentPage + 1} of {Math.ceil(total / 10)}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(prev => prev + 1)}
+                  disabled={(currentPage + 1) * 10 >= total}
+                  className="px-3 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Review Modal */}
+        {selectedChallenge && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold text-gray-800">Review Challenge</h2>
+                  <button
+                    onClick={() => {
+                      setSelectedChallenge(null);
+                      setAdminResponse('');
+                    }}
+                    className="text-gray-500 hover:text-gray-700 text-2xl"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-1">Employee:</p>
+                    <p className="text-sm text-gray-800">{selectedChallenge.users?.name}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-1">Challenge Reason:</p>
+                    <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{selectedChallenge.challenge_reason}</p>
+                  </div>
+
+                  {selectedChallenge.suggested_correct_answer && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-700 mb-1">Employee's Suggested Answer:</p>
+                      <p className="text-sm font-bold text-blue-600 bg-blue-50 p-3 rounded">
+                        {selectedChallenge.suggested_correct_answer}
+                      </p>
+                    </div>
+                  )}
+
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-1">Question:</p>
+                    <p className="text-sm text-gray-800 bg-gray-50 p-3 rounded">{selectedChallenge.questions?.question}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-1">Current Correct Answer:</p>
+                    <p className="text-sm font-bold text-green-600 bg-green-50 p-3 rounded">
+                      {selectedChallenge.questions?.correct_answer}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Admin Response (Optional)
+                    </label>
+                    <textarea
+                      value={adminResponse}
+                      onChange={(e) => setAdminResponse(e.target.value)}
+                      placeholder="Provide your response to this challenge..."
+                      className="w-full p-3 border border-gray-300 rounded-lg h-24 resize-none"
+                    />
+                  </div>
+
+                  {selectedChallenge.suggested_correct_answer && (
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="updateQuestionAnswer"
+                        checked={updateQuestionAnswer}
+                        onChange={(e) => setUpdateQuestionAnswer(e.target.checked)}
+                        className="mr-2"
+                      />
+                      <label htmlFor="updateQuestionAnswer" className="text-sm font-medium text-gray-700">
+                        Update question's correct answer to employee's suggestion ({selectedChallenge.suggested_correct_answer})
+                      </label>
+                    </div>
+                  )}
+
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      onClick={() => handleUpdateChallenge(selectedChallenge.id, 'reviewed', adminResponse)}
+                      disabled={updating}
+                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+                    >
+                      {updating ? 'Updating...' : 'Mark as Reviewed'}
+                    </button>
+                    <button
+                      onClick={() => handleUpdateChallenge(selectedChallenge.id, 'resolved', adminResponse)}
+                      disabled={updating}
+                      className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50"
+                    >
+                      {updating ? 'Updating...' : 'Mark as Resolved'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedChallenge(null);
+                        setAdminResponse('');
+                      }}
+                      className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderPageContent = () => {
     switch (currentPage) {
       case 'upload-employees':
@@ -2505,6 +2821,8 @@ export default function AdminDashboard() {
         return <ExamResultsPage setFeedback={setFeedback} />;
       case 'reexam-requests':
         return <ReexamRequestsPage setFeedback={setFeedback} />;
+      case 'question-challenges':
+        return <QuestionChallengesPage setFeedback={setFeedback} />;
       case 'pending-questions':
         return <PendingQuestionsPage setFeedback={setFeedback} />;
       case 'certificate-settings':
